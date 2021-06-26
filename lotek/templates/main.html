@@ -1,0 +1,56 @@
+@require(EDITOR_URL)
+<!doctype html>
+<html>
+<head>
+<title>lotek</title>
+<script src="https://unpkg.com/mithril/mithril.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/spectre.css/dist/spectre.min.css">
+<link rel="stylesheet" href="https://unpkg.com/spectre.css/dist/spectre-exp.min.css">
+<link rel="stylesheet" href="https://unpkg.com/spectre.css/dist/spectre-icons.min.css">
+<link rel="stylesheet" href="/static/base.css">
+
+<script type="text/javascript">
+var EDITOR_URL = "@EDITOR_URL";
+const registry = {};
+registry.registry = registry;
+registry.onload = [];
+
+window.addEventListener(
+    'load',
+    function() {
+        (async function() {
+            const plugins = [
+                "/static/layout.js",
+                "/static/view.js",
+                "/static/title.js",
+                "/static/search.js",
+                "/static/category.js",
+                "/static/tag.js",
+                "/static/kanban.js",
+                "/static/uncategorized.js",
+                "/static/etherpad.js",
+                "/static/debug.js"
+            ];
+
+            for (const filename of plugins) {
+                const plugin = await import(filename);
+                for (let name in registry) {
+                    if (registry[name] instanceof Array) {
+                        registry[name].push(...(plugin[name] || []));
+                    } else {
+                        Object.assign(registry[name], plugin[name] || {});
+                    }
+                }
+            }
+
+            for (const f of registry.onload) {
+                f();
+            }
+        })();
+    }
+);
+</script>
+</head>
+<body>
+</body>
+</html>

@@ -1,0 +1,8 @@
+*~
+venv/
+git/
+index/
+persistent/
+__pycache__/
+*.pyc
+*.pyo
