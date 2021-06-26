@@ -1,4 +1,4 @@
-import {levenshteinEditDistance} from "https://unpkg.com/levenshtein-edit-distance/index.js";
+import {levenshteinEditDistance} from "/static/vendor/npm/levenshtein-edit-distance@3.0.0/index.js";
 
 export const AutoCompleteInput = {
     oninit: function(vnode) {

@@ -9,6 +9,7 @@ class Config:
     def __init__(self, mod):
         self._config = mod
         self.CONFIG_FILE = mod.__file__
+        self.CACHE_ROOT = mod.CACHE_ROOT
 
     @cached_property
     def repo(self):
@@ -45,6 +46,7 @@ def load_config(filename):
     d.setdefault('EDITOR_URL', 'http://127.0.0.1:9001')
     d.setdefault('REPO_ROOT', 'git')
     d.setdefault('INDEX_ROOT', 'index')
+    d.setdefault('CACHE_ROOT', 'cache')
     d.setdefault('__file__', None)
     return Config(mod)
 

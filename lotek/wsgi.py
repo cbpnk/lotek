@@ -9,6 +9,8 @@ from email.utils import parsedate_to_datetime
 from random import choices
 import jsonpatch
 import json
+from urllib.request import urlretrieve
+from shutil import move
 from .config import config
 from .index import spawn_indexer
 
@@ -16,6 +18,22 @@ engine = autoreload(Engine(
     loader=FileLoader([os.path.join(os.path.dirname(__file__), 'templates')]),
     extensions=[CoreExtension()]))
 STATIC_ROOT = os.path.join(os.path.dirname(__file__), 'static')
+CACHE_ROOT = config.CACHE_ROOT
+
+def vendor_file(request, name):
+    filename = os.path.join(config.CACHE_ROOT, name)
+    try:
+        f = open(filename, 'rb')
+    except FileNotFoundError:
+        local_filename, headers = urlretrieve(f'http://cdn.jsdelivr.net/{name}')
+        os.makedirs(os.path.dirname(filename), exist_ok=True)
+        move(local_filename, filename)
+        f = open(filename, 'rb')
+
+    response = HTTPResponse(content_type=guess_type(name)[0])
+    with f:
+        response.write_bytes(f.read())
+    return response
 
 def static_file(request, name):
     try:
@@ -196,6 +214,7 @@ def router_middleware(options):
     return middleware
 
 urls = [
+    ("/static/vendor/{name:any}", vendor_file),
     ("/static/{name:any}", static_file),
     ("/files/", create_new_file),
     ("/files/{path:any}.md", markdown),

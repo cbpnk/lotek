@@ -3,6 +3,7 @@ venv/
 git/
 index/
 persistent/
+cache/
 __pycache__/
 *.pyc
 *.pyo
