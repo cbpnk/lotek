@@ -428,16 +428,20 @@ function format_card(card, start, end, today) {
 
             if (date < today) {
                 if (date.getMonth() != today.getMonth()) {
-                    classes = classes + "prev-month";
+                    classes = classes + ".prev-month";
                 }
             } else if (date < today) {
                 if (date.getMonth() != today.getMonth()) {
-                    classes = classes + "next-month";
+                    classes = classes + ".next-month";
                 }
             }
 
             if ((date.valueOf() >= start_date.valueOf()) && ((!end_date) || (date.valueOf() <= end_date.valueOf()))) {
                 classes = classes + ".calendar-range";
+            }
+
+            if ((date.valueOf() == start.valueOf()) && (start_date.valueOf() < start.valueOf())) {
+                body = events;
             }
 
             if (date.valueOf() == start_date.valueOf()) {

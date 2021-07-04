@@ -3,11 +3,24 @@ import os
 from subprocess import Popen
 
 
-def spawn_indexer(config):
-    env = os.environ.copy()
-    if config.CONFIG_FILE:
-        env["LOTEK_CONFIG"] = config.CONFIG_FILE
-    Popen(["python", "-m", __package__, "index"], executable=sys.executable, env=env)
+try:
+    import uwsgi
+
+    from uwsgidecorators import mulefunc
+
+    @mulefunc
+    def _spawn_indexer():
+        run_indexer()
+
+    def spawn_indexer(config):
+        _spawn_indexer()
+
+except ImportError:
+    def spawn_indexer(config):
+        env = os.environ.copy()
+        if config.CONFIG_FILE:
+            env["LOTEK_CONFIG"] = config.CONFIG_FILE
+        Popen(["python", "-m", __package__, "index"], executable=sys.executable, env=env)
 
 
 def tokenlist(values, analyzer, chars=False, positions=False, **kwargs):

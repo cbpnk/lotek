@@ -5,3 +5,4 @@ wheezy.http
 wheezy.template
 wheezy.routing
 jsonpatch
+pyuwsgi

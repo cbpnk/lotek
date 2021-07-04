@@ -14,6 +14,11 @@ from shutil import move
 from .config import config
 from .index import spawn_indexer
 
+try:
+    import uwsgi
+except ImportError:
+    uwsgi = None
+
 engine = autoreload(Engine(
     loader=FileLoader([os.path.join(os.path.dirname(__file__), 'templates')]),
     extensions=[CoreExtension()]))
@@ -30,20 +35,30 @@ def vendor_file(request, name):
         move(local_filename, filename)
         f = open(filename, 'rb')
 
-    response = HTTPResponse(content_type=guess_type(name)[0])
+    response = HTTPResponse(content_type=guess_type(name)[0] or "application/octet-stream")
+
     with f:
-        response.write_bytes(f.read())
+        if uwsgi:
+            response.headers.append(("X-Sendfile", os.path.abspath(filename)))
+        else:
+            response.write_bytes(f.read())
+
     return response
 
 def static_file(request, name):
+    filename = os.path.join(STATIC_ROOT, name)
     try:
-        f = open(os.path.join(STATIC_ROOT, name), 'rb')
+        f = open(filename, 'rb')
     except FileNotFoundError:
         return not_found()
 
     response = HTTPResponse(content_type=guess_type(name)[0])
     with f:
-        response.write_bytes(f.read())
+        if uwsgi:
+            response.headers.append(("X-Sendfile", os.path.abspath(filename)))
+        else:
+            response.write_bytes(f.read())
+
     return response
 
 def search(request):
@@ -197,7 +212,6 @@ def markdown(request, path):
                 spawn_indexer(config)
                 return response
 
-
 def default_page():
     response = HTTPResponse(content_type='text/html; charset=utf-8')
     template = engine.get_template('main.html')
@@ -212,6 +226,7 @@ def router_middleware(options):
             return handler(request, **args)
         return default_page()
     return middleware
+
 
 urls = [
     ("/static/vendor/{name:any}", vendor_file),
