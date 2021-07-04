@@ -11,5 +11,5 @@
 * dulwich
 
 ```
-python3 -m lotek serve
+uwsgi uwsgi.ini
 ```

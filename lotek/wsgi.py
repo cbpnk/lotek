@@ -112,9 +112,7 @@ def markdown(request, path):
 
         for mime_type in accept_header.split(","):
             mime_type = mime_type.strip().split(";", 1)[0]
-            if mime_type == 'text/html':
-                return default_page()
-            elif mime_type == 'application/json':
+            if mime_type == 'application/json':
                 commit = config.repo.get_latest_commit()
                 obj = config.repo.get_object(commit, filename)
                 if obj is None:
@@ -123,7 +121,18 @@ def markdown(request, path):
                 response = json_response(config.parser.convert(content.decode()))
                 response.headers.append(("ETag", obj.id.decode()))
                 return response
-        return not_found()
+
+            elif mime_type in ('text/plain', 'text/markdown', 'text/x-markdown', '*/*'):
+                commit = config.repo.get_latest_commit()
+                obj = config.repo.get_object(commit, filename)
+                if obj is None:
+                    return not_found()
+
+                response = HTTPResponse(content_type='text/plain; charset=utf-8')
+                response.write_bytes(obj.data)
+                return response
+
+        return http_error(406)
     elif request.method == 'PUT':
         date = parsedate_to_datetime(request.environ['HTTP_X_LOTEK_DATE'])
         repo = config.repo
