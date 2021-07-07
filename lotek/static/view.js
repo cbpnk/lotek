@@ -1,22 +1,35 @@
+
+
 const Action = {
     view: function(vnode) {
-        function onclick() {
+        function random_char() {
+            return '0123456789abcdef'[Math.floor(Math.random() * 16)];
+        }
+
+        function random_name() {
+            return random_char() + random_char() + random_char();
+        }
+
+        function create_new_file() {
+            const path = `${random_name()}/${random_name()}/${random_name()}.md`;
             m.request(
-                {method: "POST",
-                 url: "/files/",
+                {method: "PUT",
+                 url: m.buildPathname("/files/:path...", {path}),
                  headers: {'X-Lotek-Date': (new Date()).toUTCString()}}
             ).then(
                 function (result) {
-                    m.route.set(m.buildPathname("/edit/:path...", {path: result}));
+                    m.route.set(m.buildPathname("/edit/:path...", {path}));
                 },
                 function (error) {
-                    console.log(error);
+                    if (error.code === 409) {
+                        create_new_file()
+                    }
                 }
-            )
+            );
         }
 
         return m("div.input-group.input-inline",
-                 m("button.btn.btn-primary.btn-sm", {onclick}, "New"));
+                 m("button.btn.btn-primary.btn-sm", {onclick: create_new_file}, "New"));
     }
 }
 

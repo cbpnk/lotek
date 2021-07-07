@@ -70,41 +70,7 @@ def search(request):
             return json_response([hit.fields() for hit in config.index.search(q)])
         return json_response([])
 
-def random_name():
-    return ''.join(choices('0123456789abcdef', k=3))
-
-def create_new_file(request):
-    if request.method == 'POST':
-        date = parsedate_to_datetime(request.environ['HTTP_X_LOTEK_DATE'])
-        body = b''
-
-        repo = config.repo
-        parser = config.parser
-
-        while True:
-            path = f'{random_name()}/{random_name()}/{random_name()}.md'
-            filename = path.encode()
-
-            commit = repo.get_latest_commit()
-            if repo.get_object(commit, filename) is not None:
-                continue
-
-            if repo.replace_content(commit, filename, b'', f'Create: {path}'.encode(), date):
-                break
-
-        metadata = config.editor.create_new_file(filename)
-        meta = ''.join(
-            ''.join(f'{key}: {value}\n' for value in metadata[key])
-            for key in sorted(metadata))
-        while True:
-            commit = repo.get_latest_commit()
-            if repo.replace_content(commit, filename, meta.encode(), f"Setup: {path}".encode(), date):
-                break
-        spawn_indexer(config)
-        return json_response(path)
-
-
-def markdown(request, path):
+def markdown_file(request, path):
     filename = path.encode() + b'.md'
 
     if request.method == 'GET':
@@ -138,8 +104,11 @@ def markdown(request, path):
         repo = config.repo
 
         commit = repo.get_latest_commit()
-        assert commit is None
-        repo.replace_content(None, b'home.md', b'', b'Initial commit', date)
+        if commit:
+            if repo.get_object(commit, filename):
+                return http_error(409)
+
+        repo.replace_content(commit, filename, b'', f'Create {path}.md'.encode(), date)
 
         metadata = config.editor.create_new_file(filename)
         meta = ''.join(
@@ -147,7 +116,7 @@ def markdown(request, path):
             for key in sorted(metadata))
         while True:
             commit = repo.get_latest_commit()
-            if repo.replace_content(commit, b'home.md', meta.encode(), f"Setup: home.md".encode(), date):
+            if repo.replace_content(commit, filename, meta.encode(), f"Setup: {path}.md".encode(), date):
                 break
         spawn_indexer(config)
         return json_response("OK")
@@ -236,12 +205,10 @@ def router_middleware(options):
         return default_page()
     return middleware
 
-
 urls = [
     ("/static/vendor/{name:any}", vendor_file),
     ("/static/{name:any}", static_file),
-    ("/files/", create_new_file),
-    ("/files/{path:any}.md", markdown),
+    ("/files/{path:any}.md", markdown_file),
     ("/search/", search)
 ]
 
