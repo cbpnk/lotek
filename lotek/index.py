@@ -68,25 +68,26 @@ def run_indexer():
         os.makedirs(INDEX_ROOT, exist_ok=True)
         ix = create_in(INDEX_ROOT, schema)
 
-    try:
-        writer = ix.writer()
-    except LockError:
-        return
+    while True:
+        try:
+            writer = ix.writer()
+        except LockError:
+            return
 
-    head = repo.get_latest_commit()
-    indexed_commit = repo.get_indexed_commit()
-    if head == indexed_commit:
-        return
+        with writer:
+            head = repo.get_latest_commit()
+            indexed_commit = repo.get_indexed_commit()
+            if head == indexed_commit:
+                return
 
-    for path, content, is_new in repo.diff_commit(indexed_commit, head):
-        metadata, content = parser.parse(content)
-        if is_new:
-            writer.add_document(path=path, content=content, **metadata)
-        else:
-            writer.update_document(path=path, content=content, **metadata)
+            for path, content, is_new in repo.diff_commit(indexed_commit, head):
+                metadata, content = parser.parse(content)
+                if is_new:
+                    writer.add_document(path=path, content=content, **metadata)
+                else:
+                    writer.update_document(path=path, content=content, **metadata)
 
-    repo.update_indexed_commit(indexed_commit, head)
-    writer.commit()
+            repo.update_indexed_commit(indexed_commit, head)
 
 
 class Index:
