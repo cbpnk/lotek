@@ -6,3 +6,4 @@ wheezy.template
 wheezy.routing
 jsonpatch
 pyuwsgi
+pdfminer.six

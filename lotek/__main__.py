@@ -11,6 +11,10 @@ parser_index = subparsers.add_parser('index')
 parser_search = subparsers.add_parser('search')
 parser_search.add_argument('query')
 
+parser_import = subparsers.add_parser('import')
+parser_import.add_argument('-m', '--mode', choices=('copy', 'link', 'move'), default='copy')
+parser_import.add_argument('filename')
+
 args = parser.parse_args()
 if args.COMMAND == 'serve':
     from .wsgi import run_server
@@ -21,3 +25,6 @@ elif args.COMMAND == 'index':
 elif args.COMMAND == 'search':
     from .index import run_search
     run_search(args.query)
+elif args.COMMAND == 'import':
+    from .utils import run_import
+    run_import(args.filename, args.mode)

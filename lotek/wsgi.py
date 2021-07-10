@@ -30,7 +30,7 @@ def vendor_file(request, name):
     try:
         f = open(filename, 'rb')
     except FileNotFoundError:
-        local_filename, headers = urlretrieve(f'http://cdn.jsdelivr.net/{name}')
+        local_filename, headers = urlretrieve(f'https://cdn.jsdelivr.net/{name}')
         os.makedirs(os.path.dirname(filename), exist_ok=True)
         move(local_filename, filename)
         f = open(filename, 'rb')
@@ -70,125 +70,106 @@ def search(request):
             return json_response([hit.fields() for hit in config.index.search(q)])
         return json_response([])
 
+def get_markdown_file(request, commit, filename):
+    obj = config.repo.get_object(commit, filename)
+    if obj is None:
+        return not_found()
+    content = config.repo.get_data(obj)
+
+    accept_header = request.environ.get('HTTP_ACCEPT', 'text/plain')
+    for mime_type in accept_header.split(","):
+        mime_type = mime_type.strip().split(";", 1)[0]
+        if mime_type == 'application/json':
+            response = json_response(config.parser.convert(content.decode()))
+            response.headers.append(("ETag", obj.decode()))
+            return response
+        elif mime_type in ('text/plain', 'text/markdown', 'text/x-markdown', '*/*'):
+            response = HTTPResponse(content_type='text/plain; charset=utf-8')
+            response.headers.append(("ETag", obj.decode()))
+            response.write_bytes(content)
+            return response
+
+    return http_error(406)
+
 def markdown_file(request, path):
-    filename = path.encode() + b'.md'
+    filename = f'{path}.md'
+    repo = config.repo
+    parser = config.parser
 
     if request.method == 'GET':
-        accept_header = request.environ.get('HTTP_ACCEPT', 'text/html')
-
-        for mime_type in accept_header.split(","):
-            mime_type = mime_type.strip().split(";", 1)[0]
-            if mime_type == 'application/json':
-                commit = config.repo.get_latest_commit()
-                obj = config.repo.get_object(commit, filename)
-                if obj is None:
-                    return not_found()
-                content = obj.data
-                response = json_response(config.parser.convert(content.decode()))
-                response.headers.append(("ETag", obj.id.decode()))
-                return response
-
-            elif mime_type in ('text/plain', 'text/markdown', 'text/x-markdown', '*/*'):
-                commit = config.repo.get_latest_commit()
-                obj = config.repo.get_object(commit, filename)
-                if obj is None:
-                    return not_found()
-
-                response = HTTPResponse(content_type='text/plain; charset=utf-8')
-                response.write_bytes(obj.data)
-                return response
-
-        return http_error(406)
+        commit = repo.get_latest_commit()
+        return get_markdown_file(request, commit, filename)
     elif request.method == 'PUT':
         date = parsedate_to_datetime(request.environ['HTTP_X_LOTEK_DATE'])
-        repo = config.repo
 
-        commit = repo.get_latest_commit()
-        if commit:
-            if repo.get_object(commit, filename):
-                return http_error(409)
-
-        repo.replace_content(commit, filename, b'', f'Create {path}.md'.encode(), date)
-
-        metadata = config.editor.create_new_file(filename)
-        meta = ''.join(
-            ''.join(f'{key}: {value}\n' for value in metadata[key])
-            for key in sorted(metadata))
         while True:
             commit = repo.get_latest_commit()
-            if repo.replace_content(commit, filename, meta.encode(), f"Setup: {path}.md".encode(), date):
-                break
-        spawn_indexer(config)
-        return json_response("OK")
+            if commit:
+                if repo.get_object(commit, filename):
+                    return http_error(409)
 
+            if repo.replace_content(commit, filename, b'', f'Create {path}.md', date):
+                break
+
+        metadata = config.editor.create_new_file(filename)
+        while True:
+            commit = repo.get_latest_commit()
+            if repo.replace_content(commit, filename, parser.encode_markdown(metadata, ''), f"Setup: {path}.md", date):
+                spawn_indexer(config)
+                break
+
+        return json_response("OK")
 
     elif request.method == 'POST':
         date = parsedate_to_datetime(request.environ['HTTP_X_LOTEK_DATE'])
-        repo = config.repo
-        parser = config.parser
 
         while True:
             commit = repo.get_latest_commit()
+            if commit is None:
+                return not_found()
             obj = repo.get_object(commit, filename)
+            if obj is None:
+                return not_found()
 
-            metadata, _ = parser.parse(obj.data.decode())
+            metadata, _ = parser.parse(repo.get_data(obj).decode())
             new_content = config.editor.get_new_content(filename, metadata)
             if not new_content:
                 break
             metadata, body = new_content
-
-            meta = ''.join(
-                ''.join(f'{key}: {value}\n' for value in metadata[key])
-                for key in sorted(metadata))
-
-            commit = repo.replace_content(commit, filename, meta.encode() + b'\n' + body.encode(), f'Update: {filename}'.encode(), date)
-            if commit:
+            new_commit = repo.replace_content(commit, filename, parser.encode(metadata, body), f'Update: {filename}', date)
+            if new_commit:
                 spawn_indexer(config)
                 break
 
-        obj = repo.get_object(commit, filename)
-        content = obj.data
-        metadata, body = parser.parse(content.decode())
-        d = parser.convert(body)
-        metadata["content"] = d["content"]
-        response = json_response(metadata)
-        response.headers.append(("ETag", obj.id.decode()))
-        return response
+        return get_markdown_file(request, new_commit, filename)
 
     elif request.method == 'PATCH':
-        repo = config.repo
-        parser = config.parser
         date = parsedate_to_datetime(request.environ['HTTP_X_LOTEK_DATE'])
         match = request.environ['HTTP_IF_MATCH']
         patch = json.loads(request.stream.read(request.content_length))
 
         while True:
             commit = repo.get_latest_commit()
+            if commit is None:
+                return not_found()
             obj = repo.get_object(commit, filename)
-            content = obj.data
-            metadata, body = parser.parse(content.decode())
-
-            if obj.id.decode() != match:
+            if obj is None:
+                return not_found()
+            if obj.decode() != match:
                 return http_error(412)
 
+            metadata, body = parser.parse(repo.get_data(obj).decode())
             metadata = jsonpatch.apply_patch(metadata, patch)
             empty_keys = [key for key in metadata if not metadata[key]]
             for key in empty_keys:
                 del metadata[key]
 
-            meta = ''.join(
-                ''.join(f'{key}: {value}\n' for value in metadata[key])
-                for key in sorted(metadata))
-
-            new_commit = repo.replace_content(commit, filename, meta.encode() + body.encode(), f'Update: {filename}'.encode(), date)
+            new_commit = repo.replace_content(commit, filename, parser.encode(metadata, body), f'Update: {filename}', date)
             if new_commit:
-                obj = repo.get_object(new_commit, filename)
-                d = parser.convert(body)
-                metadata["content"] = d["content"]
-                response = json_response(metadata)
-                response.headers.append(("ETag", obj.id.decode()))
                 spawn_indexer(config)
-                return response
+                break
+
+        return get_markdown_file(request, new_commit, filename)
 
 def default_page():
     response = HTTPResponse(content_type='text/html; charset=utf-8')

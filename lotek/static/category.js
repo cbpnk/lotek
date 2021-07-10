@@ -5,7 +5,7 @@ const CategoryTabs = {
 
     view: function(vnode) {
         const new_categories = Object.entries(registry.categories).filter(
-            ([key, value]) => !(vnode.attrs.doc.category_i || []).includes(key));
+            ([key, value]) => !(vnode.attrs.doc.category_i || []).includes(key) && !value.readonly);
 
         function delete_category(category) {
             return function() {
@@ -51,6 +51,7 @@ const CategoryTabs = {
                         {"class": (vnode.state.active == category)?"active":"",
                          onclick: set_active(category)},
                         registry.categories[category].name),
+                      (registry.categories[category].readonly)?null:
                       m("div.menu-badge",
                         m("button.btn.btn-clear", {onclick: delete_category(category)})))
                      ),

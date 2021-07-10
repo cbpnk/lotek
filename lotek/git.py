@@ -1,3 +1,5 @@
+import os
+
 class GitRepo:
 
     def __init__(self, config):
@@ -40,19 +42,24 @@ class GitRepo:
         from dulwich.objects import Tree
         from dulwich.errors import NotTreeError
 
+        filename = filename.encode()
+
         if commit is not None:
-            tree = self.repo[self.repo[commit].tree]
+            sha = self.repo[commit].tree
 
             for part in filename.split(b"/"):
+                tree = self.repo[sha]
                 if not isinstance(tree, Tree):
                     raise NotTreeError()
                 if part not in tree:
                     return
-                mode, sha = tree[part]
-                tree = self.repo[sha]
-            return tree
+                _, sha = tree[part]
+            return sha
 
-    def _replace_content(self, old_tree, parts, content):
+    def get_data(self, obj):
+        return self.repo[obj].data
+
+    def _replace_content(self, old_tree, parts, content, mediafile):
         from dulwich.objects import Tree, Blob
 
         tree = Tree()
@@ -65,25 +72,31 @@ class GitRepo:
             blob = Blob.from_string(content)
             self.repo.object_store.add_object(blob)
             tree.add(parts[0], 0o100644, blob.id)
+            if mediafile:
+                blob = Blob.from_string(os.path.relpath(f".git/media/{mediafile}", os.path.dirname(mediafile)).encode())
+                self.repo.object_store.add_object(blob)
+                tree.add(os.path.basename(mediafile).encode(), 0o120000, blob.id)
         else:
             old_subtree = None
             if old_tree is not None and parts[0] in old_tree:
                 mode, sha = old_tree[parts[0]]
                 old_subtree = self.repo[sha]
-            subtree = self._replace_content(old_subtree, parts[1:], content)
+            subtree = self._replace_content(old_subtree, parts[1:], content, mediafile)
             tree.add(parts[0], 0o040000, subtree.id)
         self.repo.object_store.add_object(tree)
         return tree
 
-    def replace_content(self, commit, filename, content, message, author_time):
+    def replace_content(self, commit, filename, content, message, author_time=None, mediafile=None):
         from dulwich.objects import Commit
         from dulwich.repo import get_user_identity
         import time
+        filename = filename.encode()
+        message = message.encode()
 
         old_tree = None
         if commit is not None:
             old_tree = self.repo[self.repo[commit].tree]
-        tree = self._replace_content(old_tree, filename.split(b"/"), content)
+        tree = self._replace_content(old_tree, filename.split(b"/"), content, mediafile)
 
         config = self.repo.get_config()
 
@@ -93,7 +106,7 @@ class GitRepo:
         new_commit.commit_time = int(time.time())
         new_commit.commit_timezone = 0
         new_commit.author = get_user_identity(config, kind="AUTHOR")
-        new_commit.author_time = int(author_time.timestamp())
+        new_commit.author_time = int(author_time.timestamp() if author_time else time.time())
         new_commit.author_timezone = 0
         new_commit.encoding = b'UTF-8'
         new_commit.message = message
@@ -103,3 +116,26 @@ class GitRepo:
         head = self.repo.refs.get_symrefs()[b'HEAD']
         if self.repo.refs.set_if_equals(head, commit, new_commit.id):
             return new_commit.id
+
+
+    def import_file(self, filename, source_filename, mode):
+        from shutil import copyfile
+        basedir = self.repo.controldir()
+
+        fullname = os.path.join(basedir, 'media', filename)
+        dirname = os.path.dirname(fullname)
+        os.makedirs(dirname, exist_ok=True)
+
+        if os.path.exists(fullname):
+            return
+
+        if mode == 'copy':
+            copyfile(source_filename, fullname)
+        elif mode == 'link':
+            os.link(source_filename, fullname)
+        elif mode == 'move':
+            os.rename(source_filename, fullname)
+        else:
+            assert False, f"unknown mode {mode}"
+
+        os.chmod(fullname, 0o444)
