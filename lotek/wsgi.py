@@ -1,17 +1,17 @@
 import os
 from wheezy.routing import PathRouter
-from wheezy.http import WSGIApplication, bootstrap_http_defaults, HTTPResponse, not_found, json_response, http_error
+from wheezy.http import WSGIApplication, bootstrap_http_defaults, HTTPResponse, not_found, method_not_allowed, json_response, http_error
 from wheezy.template.engine import Engine
 from wheezy.template.ext.core import CoreExtension
 from wheezy.template.loader import FileLoader, autoreload
 from mimetypes import guess_type
 from email.utils import parsedate_to_datetime
-from random import choices
 import jsonpatch
 import json
 from urllib.request import urlretrieve
 from shutil import move
 from .config import config
+from .hypothesis import hypothesis_urls
 from .index import spawn_indexer
 
 try:
@@ -67,6 +67,7 @@ def search(request):
     elif request.method == 'POST':
         q = request.form.get("q", "")
         if q:
+            q = "path:*.md " + q
             return json_response([hit.fields() for hit in config.index.search(q)])
         return json_response([])
 
@@ -101,6 +102,8 @@ def markdown_file(request, path):
         return get_markdown_file(request, commit, filename)
     elif request.method == 'PUT':
         date = parsedate_to_datetime(request.environ['HTTP_X_LOTEK_DATE'])
+        body = request.stream.read(request.content_length)
+        meta = json.loads(body) if body else {}
 
         while True:
             commit = repo.get_latest_commit()
@@ -108,13 +111,14 @@ def markdown_file(request, path):
                 if repo.get_object(commit, filename):
                     return http_error(409)
 
-            if repo.replace_content(commit, filename, b'', f'Create {path}.md', date):
+            if repo.replace_content(commit, filename, parser.encode(meta, ''), f'Create {path}.md', date):
                 break
 
         metadata = config.editor.create_new_file(filename)
+        meta.update(metadata)
         while True:
             commit = repo.get_latest_commit()
-            if repo.replace_content(commit, filename, parser.encode_markdown(metadata, ''), f"Setup: {path}.md", date):
+            if repo.replace_content(commit, filename, parser.encode(meta, ''), f"Setup: {path}.md", date):
                 spawn_indexer(config)
                 break
 
@@ -136,12 +140,12 @@ def markdown_file(request, path):
             if not new_content:
                 break
             metadata, body = new_content
-            new_commit = repo.replace_content(commit, filename, parser.encode(metadata, body), f'Update: {filename}', date)
-            if new_commit:
+            commit = repo.replace_content(commit, filename, parser.encode(metadata, body), f'Update: {filename}', date)
+            if commit:
                 spawn_indexer(config)
                 break
 
-        return get_markdown_file(request, new_commit, filename)
+        return get_markdown_file(request, commit, filename)
 
     elif request.method == 'PATCH':
         date = parsedate_to_datetime(request.environ['HTTP_X_LOTEK_DATE'])
@@ -170,6 +174,41 @@ def markdown_file(request, path):
                 break
 
         return get_markdown_file(request, new_commit, filename)
+    else:
+        return method_not_allowed()
+
+
+def pdf_file(request, path):
+    filename = f'{path}.pdf'
+
+    if request.method == 'GET':
+        fullname = os.path.join(config._config.REPO_ROOT, 'media', filename)
+        try:
+            f = open(fullname, 'rb')
+        except FileNotFoundError:
+            return not_found()
+
+        with f:
+            accept_header = request.environ.get('HTTP_ACCEPT', 'text/html')
+
+            for mime_type in accept_header.split(","):
+                mime_type = mime_type.strip().split(";", 1)[0]
+                if mime_type == 'text/html':
+                    response = HTTPResponse(content_type='text/html; charset=utf-8')
+                    template = engine.get_template('pdf.html')
+                    response.write(template.render({"PDF_URL": f"/files/{path}.pdf"}))
+                    return response
+                elif mime_type in ("application/pdf", "*/*"):
+                    response = HTTPResponse(content_type='application/pdf')
+                    if uwsgi:
+                        response.headers.append(("X-Sendfile", os.path.abspath(fullename)))
+                    else:
+                        response.write_bytes(f.read())
+                    return response
+        return http_error(406)
+    else:
+        return method_not_allowed()
+
 
 def default_page():
     response = HTTPResponse(content_type='text/html; charset=utf-8')
@@ -190,7 +229,9 @@ urls = [
     ("/static/vendor/{name:any}", vendor_file),
     ("/static/{name:any}", static_file),
     ("/files/{path:any}.md", markdown_file),
-    ("/search/", search)
+    ("/files/{path:any}.pdf", pdf_file),
+    ("/search/", search),
+    ("/hypothesis/", hypothesis_urls),
 ]
 
 router = PathRouter()

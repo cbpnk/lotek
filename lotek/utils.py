@@ -56,9 +56,9 @@ def run_import(source_filename, mode):
     author = metadata.pop("Author", None)
     if author:
         meta["author_t"] = [a.strip() for a in author.split(",")]
-    title = metadata.pop("Title", None)
+    title = metadata.pop("Title", None) or os.path.basename(source_filename)
     if title:
-        meta["title_t"] = title
+        meta["title_t"] = [title]
     keywords = metadata.pop("Keywords", None)
     if keywords:
         meta["keyword_t"] = [a.strip() for a in keywords.split(",")]
@@ -75,6 +75,13 @@ def run_import(source_filename, mode):
         content = config.parser.encode(meta, '')
 
         if repo.replace_content(commit, mdname, content, f"Import {filename}", mediafile=filename):
+            break
+
+    metadata = config.editor.create_new_file(mdname)
+    meta.update(metadata)
+    while True:
+        commit = repo.get_latest_commit()
+        if repo.replace_content(commit, mdname, config.parser.encode(meta, ''), f"Setup: {mdname}"):
             run_indexer()
             break
 

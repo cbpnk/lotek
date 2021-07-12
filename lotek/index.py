@@ -45,6 +45,8 @@ def run_indexer():
     from .config import config
     from whoosh.index import open_dir, create_in, EmptyIndexError, LockError
     from markdown import Markdown
+    from datetime import datetime
+    import json
 
     INDEX_ROOT = config._config.INDEX_ROOT
 
@@ -81,11 +83,25 @@ def run_indexer():
                 return
 
             for path, content, is_new in repo.diff_commit(indexed_commit, head):
-                metadata, content = parser.parse(content)
-                if is_new:
-                    writer.add_document(path=path, content=content, **metadata)
-                else:
-                    writer.update_document(path=path, content=content, **metadata)
+                if path.endswith(".md"):
+                    metadata, content = parser.parse(content)
+                    func = writer.add_document if is_new else writer.update_document
+                    func(path=path, content=content, **metadata)
+                elif path.endswith(".h.json"):
+                    annotation = json.loads(content)
+
+                    created = annotation["created"]
+                    if created.endswith("Z"):
+                        created = created[:-1] + "+00:00"
+                    date = datetime.fromisoformat(created)
+
+                    func = writer.add_document if is_new else writer.update_document
+                    func(
+                        path=path,
+                        content=annotation["text"],
+                        group_i=[annotation["group"]],
+                        created_d=[date],
+                        uri_i=[link["href"] for link in annotation["document"]["link"]])
 
             repo.update_indexed_commit(indexed_commit, head)
 
@@ -99,11 +115,14 @@ class Index:
         self.qp = QueryParser("content", schema=self.ix.schema)
         self.qp.add_plugin(GtLtPlugin())
 
-    def search(self, query):
-        q = self.qp.parse(query)
+    def search(self, query, **kwargs):
+        if isinstance(query, str):
+            q = self.qp.parse(query)
+        else:
+            q = query
 
         with self.ix.searcher() as searcher:
-            for hit in searcher.search(q, collapse="path"):
+            for hit in searcher.search(q, collapse="path", **kwargs):
                 yield hit
 
 

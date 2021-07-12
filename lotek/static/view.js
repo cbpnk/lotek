@@ -1,5 +1,3 @@
-
-
 const Action = {
     view: function(vnode) {
         function random_char() {
@@ -63,12 +61,13 @@ const Markdown = {
                 function onclick() {
                     m.request(
                         {method: "PUT",
-                         url: "/files/:path...",
+                         url: "/files/home.md",
                          params: {path: vnode.attrs.path},
-                         headers: {'X-Lotek-Date': (new Date()).toUTCString(), 'X-Lotek-Revision': "0", 'Content-Type': "text/markdown"}}
+                         headers: {'X-Lotek-Date': (new Date()).toUTCString(), 'Content-Type': "application/json"},
+                         body: {"title_t": ["Home"]}}
                     ).then(
                         function(result) {
-                            m.route.set(m.buildPathname("/edit/:path...", {path: vnode.attrs.path}));
+                            m.route.set("/edit/home.md");
                         },
                         function(error) {
                             console.log(error);

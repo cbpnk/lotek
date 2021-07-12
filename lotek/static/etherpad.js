@@ -30,7 +30,7 @@ const Editor = {
     view: function(vnode) {
         return m("iframe",
           {style: "margin: 0 auto; width: 100%; height: 100%;",
-           src: EDITOR_URL + m.buildPathname("/p/:id", {id: vnode.attrs.path.slice(0, -3).replaceAll("/", "-")})});
+           src: EDITOR_URL + m.buildPathname("/p/:id", {id: vnode.attrs.doc.padid_i[0]})});
     }
 }
 

@@ -3,6 +3,7 @@ import json
 from urllib.request import urlopen, Request
 from urllib.parse import urlencode
 import re
+from random import choices
 
 def iter_op(attribs, numToAttrib):
     for m in re.finditer(r'((?:\*[0-9a-z]+)*)(?:\|([0-9a-z]+))?([-+=])([0-9a-z]+)|\?|', attribs):
@@ -56,6 +57,8 @@ def to_markdown(ops, text):
 
         yield chars
 
+def random_padid():
+    return ''.join(choices('0123456789abcdefghijklmnopqrstuvwxyz', k=16))
 
 class Etherpad:
 
@@ -67,18 +70,17 @@ class Etherpad:
             APIKEY = f.read()
         self.apikey = os.environ.get('ETHERPAD_APIKEY', APIKEY)
 
-    def _pad_id(self, filename):
-        assert filename.endswith(b".md")
-        return filename.decode()[:-3].replace("/", "-")
-
     def create_new_file(self, filename):
-        pad_id = self._pad_id(filename)
-        response = urlopen(Request(f"{self.url}/api/1/createPad?" + urlencode({"padID": pad_id, "text": "", "apikey": self.apikey}), method='POST'))
-        print(response.read())
-        return {"revision_n": ["0"]}
+        while True:
+            pad_id = random_padid()
+            response = urlopen(Request(f"{self.url}/api/1/createPad?" + urlencode({"padID": pad_id, "text": "", "apikey": self.apikey}), method='POST'))
+            result = json.load(response)
+            if result["code"] == 0:
+                break
+        return {"revision_n": ["0"], "padid_i": [pad_id]}
 
     def get_new_content(self, filename, metadata):
-        pad_id = self._pad_id(filename)
+        pad_id = metadata["padid_i"][0]
         response = urlopen(f"{self.url}/p/{pad_id}/export/etherpad")
         pad = json.load(response)[f"pad:{pad_id}"]
 
