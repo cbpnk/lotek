@@ -72,7 +72,7 @@ def run_import(source_filename, mode):
             if repo.get_object(commit, filename):
                 return
 
-        content = config.parser.encode(meta, '')
+        content = config.parser.format(meta, '')
 
         if repo.replace_content(commit, mdname, content, f"Import {filename}", mediafile=filename):
             break
@@ -81,7 +81,7 @@ def run_import(source_filename, mode):
     meta.update(metadata)
     while True:
         commit = repo.get_latest_commit()
-        if repo.replace_content(commit, mdname, config.parser.encode(meta, ''), f"Setup: {mdname}"):
+        if repo.replace_content(commit, mdname, config.parser.format(meta, ''), f"Setup: {mdname}"):
             run_indexer()
             break
 

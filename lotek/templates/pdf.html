@@ -16,7 +16,7 @@ var hypothesisConfig = function() {
     return {
         services: [{
             apiUrl: `${window.location.protocol}//${window.location.host}/hypothesis/api/`,
-            grantToken: "",
+            grantToken: localStorage.getItem('token'),
             sentry: {"enabled": false},
             assetRoot: "/static/vendor/npm/hypothesis@@1.810.0/",
         }]

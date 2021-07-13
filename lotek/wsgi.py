@@ -1,6 +1,6 @@
 import os
 from wheezy.routing import PathRouter
-from wheezy.http import WSGIApplication, bootstrap_http_defaults, HTTPResponse, not_found, method_not_allowed, json_response, http_error
+from wheezy.http import WSGIApplication, bootstrap_http_defaults, HTTPResponse, not_found, unauthorized, method_not_allowed, json_response, http_error
 from wheezy.template.engine import Engine
 from wheezy.template.ext.core import CoreExtension
 from wheezy.template.loader import FileLoader, autoreload
@@ -13,6 +13,7 @@ from shutil import move
 from .config import config
 from .hypothesis import hypothesis_urls
 from .index import spawn_indexer
+from .accounts import check_passwd
 
 try:
     import uwsgi
@@ -61,6 +62,7 @@ def static_file(request, name):
 
     return response
 
+
 def search(request):
     if request.method == 'GET':
         return default_page()
@@ -82,10 +84,12 @@ def get_markdown_file(request, commit, filename):
         mime_type = mime_type.strip().split(";", 1)[0]
         if mime_type == 'application/json':
             response = json_response(config.parser.convert(content.decode()))
+            response.headers.append(("Vary", "Accept"))
             response.headers.append(("ETag", obj.decode()))
             return response
         elif mime_type in ('text/plain', 'text/markdown', 'text/x-markdown', '*/*'):
             response = HTTPResponse(content_type='text/plain; charset=utf-8')
+            response.headers.append(("Vary", "Accept"))
             response.headers.append(("ETag", obj.decode()))
             response.write_bytes(content)
             return response
@@ -93,6 +97,11 @@ def get_markdown_file(request, commit, filename):
     return http_error(406)
 
 def markdown_file(request, path):
+    token = request.environ.get("HTTP_AUTHORIZATION", '')
+    if not token.startswith('Bearer '):
+        return unauthorized()
+    email = token[7:]
+
     filename = f'{path}.md'
     repo = config.repo
     parser = config.parser
@@ -111,15 +120,15 @@ def markdown_file(request, path):
                 if repo.get_object(commit, filename):
                     return http_error(409)
 
-            if repo.replace_content(commit, filename, parser.encode(meta, ''), f'Create {path}.md', date):
+            if repo.replace_content(commit, filename, parser.format(meta, ''), f'Create {path}.md', date):
                 break
 
         metadata = config.editor.create_new_file(filename)
         meta.update(metadata)
         while True:
             commit = repo.get_latest_commit()
-            if repo.replace_content(commit, filename, parser.encode(meta, ''), f"Setup: {path}.md", date):
-                spawn_indexer(config)
+            if repo.replace_content(commit, filename, parser.format(meta, ''), f"Setup: {path}.md", date):
+                spawn_indexer()
                 break
 
         return json_response("OK")
@@ -140,9 +149,9 @@ def markdown_file(request, path):
             if not new_content:
                 break
             metadata, body = new_content
-            commit = repo.replace_content(commit, filename, parser.encode(metadata, body), f'Update: {filename}', date)
+            commit = repo.replace_content(commit, filename, parser.format(metadata, body), f'Update: {filename}', date)
             if commit:
-                spawn_indexer(config)
+                spawn_indexer()
                 break
 
         return get_markdown_file(request, commit, filename)
@@ -168,9 +177,9 @@ def markdown_file(request, path):
             for key in empty_keys:
                 del metadata[key]
 
-            new_commit = repo.replace_content(commit, filename, parser.encode(metadata, body), f'Update: {filename}', date)
+            new_commit = repo.replace_content(commit, filename, parser.format(metadata, body), f'Update: {filename}', date)
             if new_commit:
-                spawn_indexer(config)
+                spawn_indexer()
                 break
 
         return get_markdown_file(request, new_commit, filename)
@@ -195,11 +204,13 @@ def pdf_file(request, path):
                 mime_type = mime_type.strip().split(";", 1)[0]
                 if mime_type == 'text/html':
                     response = HTTPResponse(content_type='text/html; charset=utf-8')
+                    response.headers.append(("Vary", "Accept"))
                     template = engine.get_template('pdf.html')
                     response.write(template.render({"PDF_URL": f"/files/{path}.pdf"}))
                     return response
                 elif mime_type in ("application/pdf", "*/*"):
                     response = HTTPResponse(content_type='application/pdf')
+                    response.headers.append(("Vary", "Accept"))
                     if uwsgi:
                         response.headers.append(("X-Sendfile", os.path.abspath(fullename)))
                     else:
@@ -209,12 +220,18 @@ def pdf_file(request, path):
     else:
         return method_not_allowed()
 
-
 def default_page():
     response = HTTPResponse(content_type='text/html; charset=utf-8')
     template = engine.get_template('main.html')
     response.write(template.render({"EDITOR_URL": config.editor.url}))
     return response
+
+def authenticate(request):
+    if request.method == 'POST':
+        if check_passwd(request.form['email'], request.form['password']):
+            return json_response(request.form['email'])
+        return unauthorized()
+    return method_not_allowed()
 
 def router_middleware(options):
     def middleware(request, following):
@@ -232,6 +249,7 @@ urls = [
     ("/files/{path:any}.pdf", pdf_file),
     ("/search/", search),
     ("/hypothesis/", hypothesis_urls),
+    ("/authenticate", authenticate)
 ]
 
 router = PathRouter()

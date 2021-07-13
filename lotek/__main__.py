@@ -15,6 +15,10 @@ parser_import = subparsers.add_parser('import')
 parser_import.add_argument('-m', '--mode', choices=('copy', 'link', 'move'), default='copy')
 parser_import.add_argument('filename')
 
+parser_useradd = subparsers.add_parser('useradd')
+parser_passwd = subparsers.add_parser('passwd')
+parser_passwd.add_argument('email')
+
 args = parser.parse_args()
 if args.COMMAND == 'serve':
     from .wsgi import run_server
@@ -28,3 +32,9 @@ elif args.COMMAND == 'search':
 elif args.COMMAND == 'import':
     from .utils import run_import
     run_import(args.filename, args.mode)
+elif args.COMMAND == 'useradd':
+    from .accounts import run_useradd
+    run_useradd()
+elif args.COMMAND == 'passwd':
+    from .accounts import run_passwd
+    run_passwd(args.email)

@@ -1,3 +1,5 @@
+import {get_token} from "/static/layout.js";
+
 const Action = {
     view: function(vnode) {
         function random_char() {
@@ -13,7 +15,7 @@ const Action = {
             m.request(
                 {method: "PUT",
                  url: m.buildPathname("/files/:path...", {path}),
-                 headers: {'X-Lotek-Date': (new Date()).toUTCString()}}
+                 headers: {'X-Lotek-Date': (new Date()).toUTCString(), 'Authorization': get_token()}}
             ).then(
                 function (result) {
                     m.route.set(m.buildPathname("/edit/:path...", {path}));
@@ -39,6 +41,7 @@ const Markdown = {
              url: "/files/:path...",
              params: {path: vnode.attrs.path},
              responseType: "json",
+             headers: {'Authorization': get_token()},
              extract: function(xhr) { return {etag: xhr.getResponseHeader("ETag"), response: xhr.response}; }}
         ).then(
             function (result) {
@@ -63,7 +66,7 @@ const Markdown = {
                         {method: "PUT",
                          url: "/files/home.md",
                          params: {path: vnode.attrs.path},
-                         headers: {'X-Lotek-Date': (new Date()).toUTCString(), 'Content-Type': "application/json"},
+                         headers: {'X-Lotek-Date': (new Date()).toUTCString(), 'Content-Type': "application/json", 'Authorization': get_token()},
                          body: {"title_t": ["Home"]}}
                     ).then(
                         function(result) {
@@ -104,7 +107,7 @@ const Markdown = {
                 {method: "POST",
                  url: "/files/:path...",
                  params: {path: vnode.attrs.path},
-                 headers: {'X-Lotek-Date': (new Date()).toUTCString()},
+                 headers: {'X-Lotek-Date': (new Date()).toUTCString(), 'Authorization': get_token()},
                  responseType: "json",
                  extract: function(xhr) { return {etag: xhr.getResponseHeader("ETag"), response: xhr.response}; }
                 }
@@ -123,7 +126,7 @@ const Markdown = {
                 {method: "PATCH",
                  url: "/files/:path...",
                  params: {path: vnode.attrs.path},
-                 headers: {'If-Match': vnode.state.etag, 'X-Lotek-Date': (new Date()).toUTCString()},
+                 headers: {'If-Match': vnode.state.etag, 'X-Lotek-Date': (new Date()).toUTCString(), 'Authorization': get_token()},
                  body: body,
                  responseType: "json",
                  extract: function(xhr) { console.log(xhr); return {etag: xhr.getResponseHeader("ETag"), response: xhr.response}; }

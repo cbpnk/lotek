@@ -1,4 +1,4 @@
-from wheezy.http import HTTPResponse, not_found, method_not_allowed, json_response, http_error
+from wheezy.http import HTTPResponse, not_found, method_not_allowed, json_response, http_error, unauthorized
 import json
 from datetime import datetime
 from random import choices
@@ -161,7 +161,7 @@ def api_token(request):
     response = HTTPResponse(content_type='application/json')
     response.write(
         json.dumps(
-            {"access_token": "good",
+            {"access_token": request.form['assertion'],
              "expires_in": 3600,
              "token_type": "Bearer"
              }
@@ -194,12 +194,16 @@ def api_groups(request):
     return response
 
 def api_profile(request):
+    token = request.environ.get("HTTP_AUTHORIZATION", '')
+    if not token.startswith('Bearer '):
+        return unauthorized()
+    host = request.environ['HTTP_HOST']
     response = HTTPResponse(content_type='application/json')
     response.write(json.dumps(
-        {"authority": "localhost",
+        {"authority": host,
          "features": {},
          "preferences": {},
-         "userid": "acct:test@localhost",
+         "userid": f"acct:{token[7:]}"
         }))
     return response
 
@@ -219,6 +223,7 @@ def normalize_annotation(payload, id, prefix):
         "update": [payload["user"]],
         "delete": [payload["user"]]
     }
+    payload["id"] = id
 
 def get_row(hit, repo, commit, prefix):
     obj = repo.get_object(commit, hit["path"])
@@ -298,7 +303,7 @@ def api_annotations(request):
         if repo.get_object(commit, filename) is not None:
             continue
         if repo.replace_content(commit, filename, content.encode(), f'Create: {filename}', date):
-            spawn_indexer(config)
+            spawn_indexer()
             break
 
     normalize_annotation(payload, filename[:-7], prefix)

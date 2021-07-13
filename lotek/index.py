@@ -9,14 +9,11 @@ try:
     from uwsgidecorators import mulefunc
 
     @mulefunc
-    def _spawn_indexer():
+    def spawn_indexer():
         run_indexer()
-
-    def spawn_indexer(config):
-        _spawn_indexer()
-
 except ImportError:
-    def spawn_indexer(config):
+    def spawn_indexer():
+        from .config import config
         env = os.environ.copy()
         if config.CONFIG_FILE:
             env["LOTEK_CONFIG"] = config.CONFIG_FILE
