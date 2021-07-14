@@ -26,6 +26,12 @@ engine = autoreload(Engine(
 STATIC_ROOT = os.path.join(os.path.dirname(__file__), 'static')
 CACHE_ROOT = config.CACHE_ROOT
 
+def sendfile(response, f, filename):
+    if uwsgi:
+        response.headers.append(("X-Sendfile", os.path.abspath(filename)))
+    else:
+        response.write_bytes(f.read())
+
 def vendor_file(request, name):
     filename = os.path.join(config.CACHE_ROOT, name)
     try:
@@ -39,11 +45,7 @@ def vendor_file(request, name):
     response = HTTPResponse(content_type=guess_type(name)[0] or "application/octet-stream")
 
     with f:
-        if uwsgi:
-            response.headers.append(("X-Sendfile", os.path.abspath(filename)))
-        else:
-            response.write_bytes(f.read())
-
+        sendfile(response, f, filename)
     return response
 
 def static_file(request, name):
@@ -55,11 +57,7 @@ def static_file(request, name):
 
     response = HTTPResponse(content_type=guess_type(name)[0])
     with f:
-        if uwsgi:
-            response.headers.append(("X-Sendfile", os.path.abspath(filename)))
-        else:
-            response.write_bytes(f.read())
-
+        sendfile(response, f, filename)
     return response
 
 
@@ -211,10 +209,7 @@ def pdf_file(request, path):
                 elif mime_type in ("application/pdf", "*/*"):
                     response = HTTPResponse(content_type='application/pdf')
                     response.headers.append(("Vary", "Accept"))
-                    if uwsgi:
-                        response.headers.append(("X-Sendfile", os.path.abspath(fullename)))
-                    else:
-                        response.write_bytes(f.read())
+                    sendfile(response, f, fullname)
                     return response
         return http_error(406)
     else:
