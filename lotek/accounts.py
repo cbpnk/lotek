@@ -47,6 +47,14 @@ def run_useradd():
         meta = {"title_t": [name], "category_i": ["user"]}
         if repo.replace_content(commit, filename, config.parser.format(meta, ''), f'Create {filename}'):
             break
+
+    metadata = config.editor.create_new_file(filename)
+    meta.update(metadata)
+    while True:
+        commit = repo.get_latest_commit()
+        if repo.replace_content(commit, filename, config.parser.format(meta, ''), f"Setup: {filename}"):
+            break
+
     replace_passwd(username, domain, crypted)
 
 
