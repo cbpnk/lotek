@@ -14,6 +14,7 @@ from .config import config
 from .hypothesis import hypothesis_urls
 from .index import spawn_indexer
 from .accounts import check_passwd
+from .utils import create_new_markdown
 
 try:
     import uwsgi
@@ -112,22 +113,8 @@ def markdown_file(request, path):
         body = request.stream.read(request.content_length)
         meta = json.loads(body) if body else {}
 
-        while True:
-            commit = repo.get_latest_commit()
-            if commit:
-                if repo.get_object(commit, filename):
-                    return http_error(409)
-
-            if repo.replace_content(commit, filename, parser.format(meta, ''), f'Create {path}.md', date):
-                break
-
-        metadata = config.editor.create_new_file(filename)
-        meta.update(metadata)
-        while True:
-            commit = repo.get_latest_commit()
-            if repo.replace_content(commit, filename, parser.format(meta, ''), f"Setup: {path}.md", date):
-                spawn_indexer()
-                break
+        if not create_new_markdown(filename, meta):
+            return http_error(409)
 
         return json_response("OK")
 

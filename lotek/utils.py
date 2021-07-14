@@ -1,10 +1,36 @@
 import os
-from pdfminer.utils import PDFDocEncoding
-from pdfminer.psparser import PSLiteral
-from pdfminer.pdfparser import PDFParser
-from pdfminer.pdfdocument import PDFDocument
+
+def create_new_markdown(filename, metadata, message=None, **kwargs):
+    from .config import config
+    from .index import run_indexer
+    repo = config.repo
+    parser = config.parser
+
+    message = message or f"Create {filename}"
+
+    while True:
+        commit = repo.get_latest_commit()
+        if commit:
+            if repo.get_object(commit, filename):
+                return False
+
+        if repo.replace_content(commit, filename, parser.format(metadata, ''), message, **kwargs):
+            break
+
+    meta = config.editor.create_new_file(filename)
+    metadata.update(meta)
+    while True:
+        commit = repo.get_latest_commit()
+        if repo.replace_content(commit, filename, parser.format(metadata, ''), f"Setup: {filename}"):
+            break
+
+    run_indexer()
+    return True
 
 def decode(s):
+    from pdfminer.utils import PDFDocEncoding
+    from pdfminer.psparser import PSLiteral
+
     if isinstance(s, PSLiteral):
         s = s.name
 
@@ -31,8 +57,9 @@ def hash_file(filename, name='sha256'):
 
 
 def run_import(source_filename, mode):
-    from .config import config
-    from .index import run_indexer
+    from pdfminer.pdfparser import PDFParser
+    from pdfminer.pdfdocument import PDFDocument
+
     ext = os.path.splitext(source_filename)[1]
 
     hexdigest = hash_file(source_filename)
@@ -66,23 +93,7 @@ def run_import(source_filename, mode):
     for k, v in metadata.items():
         print(f"{k}: {v}")
 
-    while True:
-        commit = repo.get_latest_commit()
-        if commit:
-            if repo.get_object(commit, filename):
-                return
 
-        content = config.parser.format(meta, '')
-
-        if repo.replace_content(commit, mdname, content, f"Import {filename}", mediafile=filename):
-            break
-
-    metadata = config.editor.create_new_file(mdname)
-    meta.update(metadata)
-    while True:
-        commit = repo.get_latest_commit()
-        if repo.replace_content(commit, mdname, config.parser.format(meta, ''), f"Setup: {mdname}"):
-            run_indexer()
-            break
-
+    if not create_new_markdown(mdname, meta, f"Import {filename}", mediafile=filename):
+        return
     print(mdname)

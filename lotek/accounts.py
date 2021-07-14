@@ -1,6 +1,7 @@
 from getpass import getpass
 from .config import config
 from .index import spawn_indexer
+from .utils import create_new_markdown
 
 def mkpasswd(plaintext, crypted=None):
     from crypt import crypt, mksalt, METHOD_BLOWFISH
@@ -38,23 +39,8 @@ def run_useradd():
     crypted = mkpasswd(password)
 
     filename = f"users/{domain}/{username}.md"
-    repo = config.repo
-
-    while True:
-        commit = repo.get_latest_commit()
-        if commit:
-            assert repo.get_object(commit, filename) is None, "user already exist"
-        meta = {"title_t": [name], "category_i": ["user"]}
-        if repo.replace_content(commit, filename, config.parser.format(meta, ''), f'Create {filename}'):
-            break
-
-    metadata = config.editor.create_new_file(filename)
-    meta.update(metadata)
-    while True:
-        commit = repo.get_latest_commit()
-        if repo.replace_content(commit, filename, config.parser.format(meta, ''), f"Setup: {filename}"):
-            break
-
+    meta = {"title_t": [name], "category_i": ["user"]}
+    assert create_new_markdown(filename, meta), "user already exist"
     replace_passwd(username, domain, crypted)
 
 
