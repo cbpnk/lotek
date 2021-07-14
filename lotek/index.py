@@ -53,15 +53,17 @@ def run_indexer():
     from whoosh import formats
     formats.tokens = tokens
 
+    from .fields import NGRAMCJKTEXT
+
     try:
         ix = open_dir(INDEX_ROOT)
     except EmptyIndexError:
-        from whoosh.fields import Schema, ID, TEXT, NUMERIC, DATETIME
+        from whoosh.fields import Schema, ID, NUMERIC, DATETIME
         schema = Schema(
             path=ID(unique=True, stored=True),
-            content=TEXT())
+            content=NGRAMCJKTEXT())
         schema.add("*_i", ID(stored=True), glob=True)
-        schema.add("*_t", TEXT(stored=True), glob=True)
+        schema.add("*_t", NGRAMCJKTEXT(stored=True), glob=True)
         schema.add("*_n", NUMERIC(stored=True), glob=True)
         schema.add("*_d", DATETIME(stored=True), glob=True)
         os.makedirs(INDEX_ROOT, exist_ok=True)
