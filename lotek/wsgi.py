@@ -129,12 +129,11 @@ def markdown_file(request, path):
             if obj is None:
                 return not_found()
 
-            metadata, _ = parser.parse(repo.get_data(obj).decode())
+            metadata = parser.parse(repo.get_data(obj).decode())
             new_content = config.editor.get_new_content(filename, metadata)
             if not new_content:
                 break
-            metadata, body = new_content
-            commit = repo.replace_content(commit, filename, parser.format(metadata, body), f'Update: {filename}', date)
+            commit = repo.replace_content(commit, filename, parser.format(new_content), f'Update: {filename}', date)
             if commit:
                 spawn_indexer()
                 break
@@ -156,13 +155,13 @@ def markdown_file(request, path):
             if obj.decode() != match:
                 return http_error(412)
 
-            metadata, body = parser.parse(repo.get_data(obj).decode())
+            metadata = parser.parse(repo.get_data(obj).decode())
             metadata = jsonpatch.apply_patch(metadata, patch)
             empty_keys = [key for key in metadata if not metadata[key]]
             for key in empty_keys:
                 del metadata[key]
 
-            new_commit = repo.replace_content(commit, filename, parser.format(metadata, body), f'Update: {filename}', date)
+            new_commit = repo.replace_content(commit, filename, parser.format(metadata), f'Update: {filename}', date)
             if new_commit:
                 spawn_indexer()
                 break

@@ -104,7 +104,6 @@ function main() {
                 [key,
                  {onmatch: authenticate,
                   render: function(vnode) {
-                      console.log(vnode);
                       return (vnode.tag !== "div")?vnode:m(Layout, value(vnode));
                   }}]
             ))

@@ -83,9 +83,9 @@ def run_indexer():
 
             for path, content, is_new in repo.diff_commit(indexed_commit, head):
                 if path.endswith(".md"):
-                    metadata, content = parser.parse(content)
+                    metadata = parser.parse(content)
                     func = writer.add_document if is_new else writer.update_document
-                    func(path=path, content=content, **metadata)
+                    func(path=path, **metadata)
                 elif path.endswith(".h.json"):
                     annotation = json.loads(content)
 

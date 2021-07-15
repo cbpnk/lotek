@@ -122,14 +122,14 @@ const Markdown = {
         }
 
         function patch(body) {
-            m.request(
+            return m.request(
                 {method: "PATCH",
                  url: "/files/:path...",
                  params: {path: vnode.attrs.path},
                  headers: {'If-Match': vnode.state.etag, 'X-Lotek-Date': (new Date()).toUTCString(), 'Authorization': get_token()},
                  body: body,
                  responseType: "json",
-                 extract: function(xhr) { console.log(xhr); return {etag: xhr.getResponseHeader("ETag"), response: xhr.response}; }
+                 extract: function(xhr) { return {etag: xhr.getResponseHeader("ETag"), response: xhr.response}; }
                 }
             ).then(
                 function (result) {
@@ -145,8 +145,8 @@ const Markdown = {
 
         const edit = vnode.attrs.edit;
 
-        return [
-            m("main", (edit)?m(registry.editor_widgets[0], {edit, patch, save, path: vnode.attrs.path, doc: vnode.state.doc}):m.trust(vnode.state.doc.content)),
+        return (edit)?m(registry.editor_widgets[0], {edit, patch, save, path: vnode.attrs.path, doc: vnode.state.doc}):[
+            m("main", m.trust(vnode.state.doc.html)),
             [["aside.top", registry.top_widgets],
              ["aside.bottom", registry.bottom_widgets],
              ["aside.right", registry.right_widgets]

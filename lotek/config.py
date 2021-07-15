@@ -28,8 +28,8 @@ class Config:
 
     @cached_property
     def editor(self):
-        from .etherpad import Etherpad
-        return Etherpad(self._config)
+        from .textarea import TextArea
+        return TextArea(self._config)
 
 
 def load_config(filename):

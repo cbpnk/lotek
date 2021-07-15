@@ -14,17 +14,18 @@ def create_new_markdown(filename, metadata, message=None, **kwargs):
             if repo.get_object(commit, filename):
                 return False
 
-        if repo.replace_content(commit, filename, parser.format(metadata, ''), message, **kwargs):
+        if repo.replace_content(commit, filename, parser.format(metadata), message, **kwargs):
             break
 
     meta = config.editor.create_new_file(filename)
-    metadata.update(meta)
-    while True:
-        commit = repo.get_latest_commit()
-        if repo.replace_content(commit, filename, parser.format(metadata, ''), f"Setup: {filename}"):
-            break
+    if meta:
+        metadata.update(meta)
+        while True:
+            commit = repo.get_latest_commit()
+            if repo.replace_content(commit, filename, parser.format(metadata), f"Setup: {filename}"):
+                break
 
-    run_indexer()
+        run_indexer()
     return True
 
 def decode(s):
