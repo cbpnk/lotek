@@ -204,7 +204,7 @@ def pdf_file(request, path):
 def default_page():
     response = HTTPResponse(content_type='text/html; charset=utf-8')
     template = engine.get_template('main.html')
-    response.write(template.render({"EDITOR_URL": config.editor.url}))
+    response.write(template.render({"EDITOR": config._config.EDITOR, "EDITOR_URL": config.editor.url}))
     return response
 
 def authenticate(request):

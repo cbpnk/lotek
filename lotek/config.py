@@ -2,6 +2,15 @@ import sys
 import os
 from types import ModuleType
 from functools import cached_property
+from pkg_resources import working_set
+
+def load_entry_point(group, name):
+    for dist in working_set:
+        ep = dist.get_entry_info(group, name)
+        if ep is None:
+            continue
+        return ep.load()
+    raise ImportError("Entry point %r not found" % ((group, name),))
 
 
 class Config:
@@ -28,8 +37,9 @@ class Config:
 
     @cached_property
     def editor(self):
-        from .textarea import TextArea
-        return TextArea(self._config)
+        return load_entry_point(
+            f"{__package__}_editors",
+            getattr(self._config, 'EDITOR', 'textarea'))(self._config)
 
 
 def load_config(filename):
@@ -43,6 +53,7 @@ def load_config(filename):
             code = compile(f.read(), filename, 'exec')
         exec(code, d)
 
+    d.setdefault('EDITOR', 'textarea')
     d.setdefault('EDITOR_URL', 'http://127.0.0.1:9001')
     d.setdefault('REPO_ROOT', 'git')
     d.setdefault('INDEX_ROOT', 'index')
