@@ -24,6 +24,8 @@ def tokenlist(values, analyzer, chars=False, positions=False, **kwargs):
     for value in values:
         for t in analyzer(value, chars=chars, positions=positions, **kwargs):
             yield t
+        else:
+            continue
         if chars:
             kwargs['start_char'] = t.endchar + 1
         if positions:
