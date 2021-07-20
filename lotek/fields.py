@@ -1,7 +1,7 @@
 import re
 from whoosh.fields import TEXT
 from whoosh.analysis import StandardAnalyzer, Filter, NgramTokenizer
-from whoosh.query import And, Or, Term, FuzzyTerm, SpanNear2
+from whoosh.query import And, Or, Term, Wildcard, SpanNear2
 
 NGRAM = NgramTokenizer(2)
 CJK = re.compile(r'[\u2E80-\u9FFF\uF900-\uFAFF\uFE30-\uFE4F\U0001F200-\U0001F2FF\U00020000-\U0002FA1F]+')
@@ -52,7 +52,7 @@ class CJKFilter(Filter):
 
 def text2term(fieldname, text, is_cjk):
     if is_cjk and len(text) == 1:
-        return FuzzyTerm(fieldname, text)
+        return Wildcard(fieldname, f"*{text}*")
     return Term(fieldname, text)
 
 class SpanNear3(SpanNear2):
