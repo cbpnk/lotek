@@ -86,7 +86,7 @@ class GitRepo:
         self.repo.object_store.add_object(tree)
         return tree
 
-    def replace_content(self, commit, filename, content, message, author_time=None, mediafile=None):
+    def replace_content(self, commit, filename, content, message, author=None, author_time=None, mediafile=None):
         from dulwich.objects import Commit
         from dulwich.repo import get_user_identity
         import time
@@ -105,7 +105,7 @@ class GitRepo:
         new_commit.committer = get_user_identity(config, kind="COMMITTER")
         new_commit.commit_time = int(time.time())
         new_commit.commit_timezone = 0
-        new_commit.author = get_user_identity(config, kind="AUTHOR")
+        new_commit.author = author.encode() if author else get_user_identity(config, kind="AUTHOR")
         new_commit.author_time = int(author_time.timestamp() if author_time else time.time())
         new_commit.author_timezone = 0
         new_commit.encoding = b'UTF-8'

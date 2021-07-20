@@ -74,3 +74,13 @@ def check_passwd(email, password):
         return False
 
     return mkpasswd(password, users[username]) == users[username]
+
+def get_name(email):
+    username, domain = email.split('@', 1)
+    repo = config.repo
+    parser = config.parser
+    commit = repo.get_latest_commit()
+    filename = f"users/{domain}/{username}.md"
+    obj = repo.get_object(commit, filename)
+    metadata = parser.parse(repo.get_data(obj).decode())
+    return metadata.get("title_t", [False])[0]

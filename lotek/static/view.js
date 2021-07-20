@@ -36,6 +36,7 @@ const Action = {
 const Markdown = {
     oninit: function(vnode) {
         vnode.state.doc = false;
+        vnode.state.height = '100%';
         m.request(
             {method: "GET",
              url: "/files/:path...",
@@ -145,8 +146,17 @@ const Markdown = {
 
         const edit = vnode.attrs.edit;
 
+        function onload(event) {
+            vnode.state.height = event.target.contentWindow.document.body.scrollHeight + 35;
+        }
+
         return (edit)?m(registry.editor_widgets[0], {edit, patch, save, path: vnode.attrs.path, doc: vnode.state.doc}):[
-            m("main", m.trust(vnode.state.doc.html)),
+            m("main",
+              m("iframe",
+                {style: `margin: 0; border: 0; padding: 0; width: 100%; min-height: 100%; height: ${vnode.state.height}px`,
+                 src: m.buildPathname("/files/:path...", {path: vnode.attrs.path}),
+                 onload: onload})
+             ),
             [["aside.top", registry.top_widgets],
              ["aside.bottom", registry.bottom_widgets],
              ["aside.right", registry.right_widgets]

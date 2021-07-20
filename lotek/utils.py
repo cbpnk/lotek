@@ -1,6 +1,6 @@
 import os
 
-def create_new_markdown(filename, metadata, message=None, **kwargs):
+def create_new_markdown(filename, metadata, message=None, author=None, **kwargs):
     from .config import config
     from .index import run_indexer
     repo = config.repo
@@ -14,7 +14,7 @@ def create_new_markdown(filename, metadata, message=None, **kwargs):
             if repo.get_object(commit, filename):
                 return False
 
-        if repo.replace_content(commit, filename, parser.format(metadata), message, **kwargs):
+        if repo.replace_content(commit, filename, parser.format(metadata), message, author, **kwargs):
             break
 
     meta = config.editor.create_new_file(filename)
@@ -58,6 +58,7 @@ def hash_file(filename, name='sha256'):
 
 
 def run_import(source_filename, mode):
+    from .config import config
     from pdfminer.pdfparser import PDFParser
     from pdfminer.pdfdocument import PDFDocument
 

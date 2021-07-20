@@ -5,7 +5,7 @@ from wheezy.template.engine import Engine
 from wheezy.template.ext.core import CoreExtension
 from wheezy.template.loader import FileLoader, autoreload
 from mimetypes import guess_type
-from email.utils import parsedate_to_datetime
+from email.utils import parsedate_to_datetime, formataddr
 import jsonpatch
 import json
 from urllib.request import urlretrieve
@@ -13,7 +13,7 @@ from shutil import move
 from .config import config
 from .hypothesis import hypothesis_urls
 from .index import spawn_indexer
-from .accounts import check_passwd
+from .accounts import check_passwd, get_name
 from .utils import create_new_markdown
 
 try:
@@ -86,6 +86,13 @@ def get_markdown_file(request, commit, filename):
             response.headers.append(("Vary", "Accept"))
             response.headers.append(("ETag", obj.decode()))
             return response
+        elif mime_type == 'text/html':
+            metadata = config.parser.convert(content.decode())
+            response = HTTPResponse(content_type='text/html; charset=utf-8')
+            response.headers.append(("Vary", "Accept"))
+            template = engine.get_template('markdown.html')
+            response.write_bytes(template.render({"HTML": metadata["html"]}).encode())
+            return response
         elif mime_type in ('text/plain', 'text/markdown', 'text/x-markdown', '*/*'):
             response = HTTPResponse(content_type='text/plain; charset=utf-8')
             response.headers.append(("Vary", "Accept"))
@@ -95,25 +102,28 @@ def get_markdown_file(request, commit, filename):
 
     return http_error(406)
 
-def markdown_file(request, path):
-    token = request.environ.get("HTTP_AUTHORIZATION", '')
-    if not token.startswith('Bearer '):
-        return unauthorized()
-    email = token[7:]
 
+def markdown_file(request, path):
     filename = f'{path}.md'
     repo = config.repo
-    parser = config.parser
 
     if request.method == 'GET':
         commit = repo.get_latest_commit()
         return get_markdown_file(request, commit, filename)
-    elif request.method == 'PUT':
+
+    parser = config.parser
+    token = request.environ.get("HTTP_AUTHORIZATION", '')
+    if not token.startswith('Bearer '):
+        return unauthorized()
+    email = token[7:]
+    author = formataddr((get_name(email), email))
+
+    if request.method == 'PUT':
         date = parsedate_to_datetime(request.environ['HTTP_X_LOTEK_DATE'])
         body = request.stream.read(request.content_length)
         meta = json.loads(body) if body else {}
 
-        if not create_new_markdown(filename, meta):
+        if not create_new_markdown(filename, meta, author=author):
             return http_error(409)
 
         return json_response("OK")
@@ -133,7 +143,7 @@ def markdown_file(request, path):
             new_content = config.editor.get_new_content(filename, metadata)
             if not new_content:
                 break
-            commit = repo.replace_content(commit, filename, parser.format(new_content), f'Update: {filename}', date)
+            commit = repo.replace_content(commit, filename, parser.format(new_content), f'Update: {filename}', author, date)
             if commit:
                 spawn_indexer()
                 break
@@ -161,7 +171,7 @@ def markdown_file(request, path):
             for key in empty_keys:
                 del metadata[key]
 
-            new_commit = repo.replace_content(commit, filename, parser.format(metadata), f'Update: {filename}', date)
+            new_commit = repo.replace_content(commit, filename, parser.format(metadata), f'Update: {filename}', author, date)
             if new_commit:
                 spawn_indexer()
                 break

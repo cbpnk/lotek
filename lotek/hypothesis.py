@@ -3,6 +3,8 @@ import json
 from datetime import datetime
 from random import choices
 from urllib.parse import parse_qs
+from email.utils import formataddr
+from .accounts import get_name
 from .config import config
 from .index import spawn_indexer
 
@@ -275,6 +277,7 @@ def rewrite_link(obj, key, prefix):
 def random_name():
     return ''.join(choices('0123456789abcdef', k=3))
 
+
 def api_annotations(request):
     scheme = request.environ["wsgi.url_scheme"]
     host = request.environ["HTTP_HOST"]
@@ -296,13 +299,16 @@ def api_annotations(request):
     del payload["permissions"]
     content = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(',',':'))
 
+    email = payload["user"][5:]
+    author = formataddr((get_name(email), email))
+
     repo = config.repo
     while True:
         filename = f'{random_name()}/{random_name()}/{random_name()}.h.json'
         commit = repo.get_latest_commit()
         if repo.get_object(commit, filename) is not None:
             continue
-        if repo.replace_content(commit, filename, content.encode(), f'Create: {filename}', date):
+        if repo.replace_content(commit, filename, content.encode(), f'Create: {filename}', author, date):
             spawn_indexer()
             break
 
