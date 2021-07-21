@@ -3,5 +3,5 @@ class TextArea:
     def __init__(self, config):
         self.url = ''
 
-    def create_new_file(self, filename):
+    def create_new_file(self, filename, metadata):
         pass

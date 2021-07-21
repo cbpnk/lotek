@@ -225,12 +225,27 @@ class FeishuTenant:
                 headers={"Content-Type": "application/json; charset=utf-8"}))
         return json.load(response)["tenant_access_token"]
 
-    def create_new_file(self, filename):
+    def create_new_file(self, filename, metadata):
+        body = {"FolderToken": self.folder_token}
+        title = metadata.get("title_t", [None])[0]
+        if title:
+            body["Content"] = json.dumps({
+                "title": {
+                    "elements": [{
+                        "type": "textRun",
+                        "textRun": {
+                            "text": title,
+                            "style": {}
+                        }
+                    }]
+                }
+            })
+
         response = urlopen(
             Request(
             url="https://open.feishu.cn/open-apis/doc/v2/create",
                 method="POST",
-                data=json.dumps({"FolderToken": self.folder_token}).encode(),
+                data=json.dumps(body).encode(),
                 headers={
                     "Authorization": f"Bearer {self.tenant_access_token}",
                     "Content-Type": "application/json; charset=utf-8"}
@@ -250,7 +265,9 @@ class FeishuTenant:
                 data=json.dumps({"token": token, "type": "doc", "link_share_entity": "tenant_editable"}).encode()))
         result = json.load(response)
         assert result['code'] == 0
-        return {"feishu_token_i": [token], "revision_n": ["0"]}
+        metadata.update({"feishu_token_i": [token], "revision_n": ["0"]})
+        return metadata
+
 
     def get_new_content(self, filename, metadata):
         token = metadata["feishu_token_i"][0]

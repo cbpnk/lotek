@@ -17,12 +17,11 @@ def create_new_txt(filename, metadata, message=None, author=None, **kwargs):
         if repo.replace_content(commit, filename, parser.format(metadata), message, author, **kwargs):
             break
 
-    meta = config.editor.create_new_file(filename)
+    meta = config.editor.create_new_file(filename, metadata)
     if meta:
-        metadata.update(meta)
         while True:
             commit = repo.get_latest_commit()
-            if repo.replace_content(commit, filename, parser.format(metadata), f"Setup: {filename}"):
+            if repo.replace_content(commit, filename, parser.format(meta), f"Setup: {filename}"):
                 break
 
         run_indexer()

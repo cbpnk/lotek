@@ -31,7 +31,8 @@ const Editor = {
         return [
             m("aside.top",
               m(Widget, {doc: vnode.attrs.doc, path: vnode.attrs.path, edit: vnode.attrs.edit, save: vnode.attrs.save})),
-            m("main",
+            m("div",
+              {"style": "grid-column: 1 / span 3; margin: 1em;"},
               m("iframe",
                 {style: "margin: 0 auto; width: 100%; height: 100%;",
                  src: EDITOR_URL + m.buildPathname("/docs/:token", {token: vnode.attrs.doc.feishu_token_i[0]})})
