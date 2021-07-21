@@ -46,8 +46,22 @@ var hypothesisConfig = function() {
         }]
     };
 };
+
+var MathJax = {
+  tex: {
+    inlineMath: [ ["\\(","\\)"] ],
+    displayMath: [ ["\\[","\\]"] ],
+    processEscapes: true,
+    processEnvironments: true
+  },
+  options: {
+    ignoreHtmlClass: ".*|",
+    processHtmlClass: "arithmatex"
+  }
+};
 </script>
 
+<script src="/static/vendor/npm/mathjax@@3/es5/tex-chtml.js"></script>
 <script src="/static/vendor/npm/hypothesis@@1.810.0/build/boot.js"></script>
 </head>
 <body>
