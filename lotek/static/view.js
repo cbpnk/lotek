@@ -11,7 +11,7 @@ const Action = {
         }
 
         function create_new_file() {
-            const path = `${random_name()}/${random_name()}/${random_name()}.md`;
+            const path = `${random_name()}/${random_name()}/${random_name()}.txt`;
             m.request(
                 {method: "PUT",
                  url: m.buildPathname("/files/:path...", {path}),
@@ -65,13 +65,13 @@ const Markdown = {
                 function onclick() {
                     m.request(
                         {method: "PUT",
-                         url: "/files/home.md",
+                         url: "/files/home.txt",
                          params: {path: vnode.attrs.path},
                          headers: {'X-Lotek-Date': (new Date()).toUTCString(), 'Content-Type': "application/json", 'Authorization': get_token()},
                          body: {"title_t": ["Home"]}}
                     ).then(
                         function(result) {
-                            m.route.set("/edit/home.md");
+                            m.route.set("/edit/home.txt");
                         },
                         function(error) {
                             console.log(error);
@@ -80,7 +80,7 @@ const Markdown = {
                 }
 
                 return [
-                    m("main", (vnode.attrs.path === 'home.md')?m("button", {onclick}, "Create Home Page"):"NOT FOUND"),
+                    m("main", (vnode.attrs.path === 'home.txt')?m("button", {onclick}, "Create Home Page"):"NOT FOUND"),
                     m("aside.top", []),
                     m("aside.bottom", []),
                     m("aside.right", [])
@@ -173,7 +173,7 @@ export const routes = {
     "/edit/:path...": (vnode) => m(Markdown, {key: m.route.get(), path: vnode.attrs.path, edit: true})
 };
 
-export const links = [{url: "/view/home.md", name: "Home"}];
+export const links = [{url: "/view/home.txt", name: "Home"}];
 export const actions = [Action];
 
 export const registry = {

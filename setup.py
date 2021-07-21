@@ -25,6 +25,9 @@ setup(
         'lotek_editors':
         [ 'textarea = lotek.textarea:TextArea',
           'feishu = lotek.feishu:FeishuTenant'
+        ],
+        'lotek_txt_formats':
+        [ 'markdown = lotek.markdown:MarkdownParser',
         ]
     },
     install_requires = [

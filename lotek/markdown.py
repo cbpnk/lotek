@@ -45,9 +45,7 @@ class MarkdownParser:
                     'emoji_generator': emoji_to_unicode
                 }
             })
-        html = md.convert(d["content"])
-        d["html"] = html
-        return d
+        return md.convert(d["content"])
 
     def format(self, metadata):
         body = metadata.pop("content", "")

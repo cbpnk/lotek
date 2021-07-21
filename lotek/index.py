@@ -84,7 +84,7 @@ def run_indexer():
                 return
 
             for path, content, is_new in repo.diff_commit(indexed_commit, head):
-                if path.endswith(".md"):
+                if path.endswith(".txt"):
                     metadata = parser.parse(content)
                     func = writer.add_document if is_new else writer.update_document
                     func(path=path, **metadata)

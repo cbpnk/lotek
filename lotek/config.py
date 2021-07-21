@@ -27,8 +27,7 @@ class Config:
 
     @cached_property
     def parser(self):
-        from .markdown import MarkdownParser
-        return MarkdownParser(self._config)
+        return load_entry_point(f"{__package__}_txt_formats", self._config.TXT_FORMAT)(self._config)
 
     @cached_property
     def index(self):
@@ -37,9 +36,7 @@ class Config:
 
     @cached_property
     def editor(self):
-        return load_entry_point(
-            f"{__package__}_editors",
-            getattr(self._config, 'EDITOR', 'textarea'))(self._config)
+        return load_entry_point(f"{__package__}_editors", self._config.EDITOR)(self._config)
 
 
 def load_config(filename):
@@ -55,6 +52,7 @@ def load_config(filename):
 
     d.setdefault('EDITOR', 'textarea')
     d.setdefault('EDITOR_URL', 'http://127.0.0.1:9001')
+    d.setdefault('TXT_FORMAT', 'markdown')
     d.setdefault('REPO_ROOT', 'git')
     d.setdefault('INDEX_ROOT', 'index')
     d.setdefault('CACHE_ROOT', 'cache')

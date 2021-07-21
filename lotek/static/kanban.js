@@ -55,7 +55,7 @@ const Milestone = {
               [{name: "BACKLOG", cards: vnode.state.cards_in_backlog},
                {name: "INBOX", cards: vnode.state.cards_in_inbox},
                {name: "WIP", cards: vnode.state.cards_in_wip},
-               {name: "DONE", cards: vnode.state.cards_in_wip}
+               {name: "DONE", cards: vnode.state.cards_in_done}
               ].map(
                   (panel) =>
                   m("div.panel.column.mx-2",

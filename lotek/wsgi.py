@@ -15,7 +15,7 @@ from .config import config
 from .hypothesis import hypothesis_urls
 from .index import spawn_indexer
 from .accounts import check_passwd, get_name
-from .utils import create_new_markdown
+from .utils import create_new_txt
 
 try:
     import uwsgi
@@ -69,11 +69,11 @@ def search(request):
     elif request.method == 'POST':
         q = request.form.get("q", "")
         if q:
-            q = "path:*.md " + q
+            q = "path:*.txt " + q
             return json_response([hit.fields() for hit in config.index.search(q)])
         return json_response([])
 
-def get_markdown_file(request, commit, filename):
+def get_txt_file(request, commit, filename):
     obj = config.repo.get_object(commit, filename)
     if obj is None:
         return not_found()
@@ -83,18 +83,18 @@ def get_markdown_file(request, commit, filename):
     for mime_type in accept_header.split(","):
         mime_type = mime_type.strip().split(";", 1)[0]
         if mime_type == 'application/json':
-            response = json_response(config.parser.convert(content.decode()))
+            response = json_response(config.parser.parse(content.decode()))
             response.headers.append(("Vary", "Accept"))
             response.headers.append(("ETag", obj.decode()))
             return response
         elif mime_type == 'text/html':
-            metadata = config.parser.convert(content.decode())
+            html = config.parser.convert(content.decode())
             response = HTTPResponse(content_type='text/html; charset=utf-8')
             response.headers.append(("Vary", "Accept"))
-            template = engine.get_template('markdown.html')
-            response.write_bytes(template.render({"HTML": metadata["html"]}).encode())
+            template = engine.get_template('txt.html')
+            response.write_bytes(template.render({"HTML": html}).encode())
             return response
-        elif mime_type in ('text/plain', 'text/markdown', 'text/x-markdown', '*/*'):
+        elif mime_type in ('text/plain', '*/*'):
             response = HTTPResponse(content_type='text/plain; charset=utf-8')
             response.headers.append(("Vary", "Accept"))
             response.headers.append(("ETag", obj.decode()))
@@ -104,13 +104,13 @@ def get_markdown_file(request, commit, filename):
     return http_error(406)
 
 
-def markdown_file(request, path):
-    filename = f'{path}.md'
+def txt_file(request, path):
+    filename = f'{path}.txt'
     repo = config.repo
 
     if request.method == 'GET':
         commit = repo.get_latest_commit()
-        return get_markdown_file(request, commit, filename)
+        return get_txt_file(request, commit, filename)
 
     parser = config.parser
     token = request.environ.get("HTTP_AUTHORIZATION", '')
@@ -124,7 +124,7 @@ def markdown_file(request, path):
         body = request.stream.read(request.content_length)
         meta = json.loads(body) if body else {}
 
-        if not create_new_markdown(filename, meta, author=author):
+        if not create_new_txt(filename, meta, author=author):
             return http_error(409)
 
         return json_response("OK")
@@ -149,7 +149,7 @@ def markdown_file(request, path):
                 spawn_indexer()
                 break
 
-        return get_markdown_file(request, commit, filename)
+        return get_txt_file(request, commit, filename)
 
     elif request.method == 'PATCH':
         date = parsedate_to_datetime(request.environ['HTTP_X_LOTEK_DATE'])
@@ -177,7 +177,7 @@ def markdown_file(request, path):
                 spawn_indexer()
                 break
 
-        return get_markdown_file(request, new_commit, filename)
+        return get_txt_file(request, new_commit, filename)
     else:
         return method_not_allowed()
 
@@ -237,7 +237,7 @@ def router_middleware(options):
 urls = [
     ("/static/vendor/{name:any}", vendor_file),
     ("/static/{name:any}", static_file),
-    ("/files/{path:any}.md", markdown_file),
+    ("/files/{path:any}.txt", txt_file),
     ("/files/{path:any}.pdf", pdf_file),
     ("/search/", search),
     ("/hypothesis/", hypothesis_urls),

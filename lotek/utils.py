@@ -1,6 +1,6 @@
 import os
 
-def create_new_markdown(filename, metadata, message=None, author=None, **kwargs):
+def create_new_txt(filename, metadata, message=None, author=None, **kwargs):
     from .config import config
     from .index import run_indexer
     repo = config.repo
@@ -66,7 +66,7 @@ def run_import(source_filename, mode):
 
     hexdigest = hash_file(source_filename)
     filename = f'{hexdigest[0:3]}/{hexdigest[3:6]}/{hexdigest[6:]}{ext}'
-    mdname = f'{hexdigest[0:3]}/{hexdigest[3:6]}/{hexdigest[6:]}.md'
+    txtname = f'{hexdigest[0:3]}/{hexdigest[3:6]}/{hexdigest[6:]}.txt'
 
     repo = config.repo
 
@@ -96,6 +96,6 @@ def run_import(source_filename, mode):
         print(f"{k}: {v}")
 
 
-    if not create_new_markdown(mdname, meta, f"Import {filename}", mediafile=filename):
+    if not create_new_txt(txtname, meta, f"Import {filename}", mediafile=filename):
         return
-    print(mdname)
+    print(txtname)
