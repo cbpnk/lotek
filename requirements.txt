@@ -7,3 +7,5 @@ wheezy.routing
 jsonpatch
 pyuwsgi
 pdfminer.six
+pymdown-extensions
+Pygments

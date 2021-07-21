@@ -13,7 +13,7 @@ const Widget = {
             m("div.form-horizontal",
               m("div.form-group",
                 m("div.column.col-3", m("label.form-label", "Revision")),
-                m("div.column", m("label.form-label", vnode.attrs.doc)),
+                m("div.column", m("label.form-label", (vnode.attrs.doc.revision_n || [0])[0])),
                    m("div",
                      m("label.form-switch",
                        m("input[type=checkbox][disabled=disabled]", {"checked": vnode.attrs.edit?"checked":"", oninput}),

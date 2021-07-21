@@ -36,5 +36,7 @@ setup(
         'wheezy.routing',
         'wheezy.template',
         'whoosh',
+        'pymdown-extensions',
+        'Pygments'
     ],
 )

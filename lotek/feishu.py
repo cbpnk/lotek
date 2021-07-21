@@ -1,43 +1,173 @@
 from urllib.request import urlopen, Request
+from urllib.parse import unquote
 import json
+import re
+
+TABLE = str.maketrans(
+    {c: "\\" + c for c in "\\`*_{}[]()#+-.!~|^:"}
+)
+
+INDENT = ' ' * 4
+
+def escape(text):
+    return text.translate(TABLE)
+
+def escape_code(code):
+    n = max(map(len, re.findall(r'`+', code))) + 1
+    if code.startswith("`"):
+        code = ' ' + code
+    if code.endswith("`"):
+        code = code + ' '
+    return n, code
+
+def to_rgba(color):
+    if color is None:
+        return
+    return f"rgba({color['red']}, {color['green']}, {color['blue']}, {color['alpha']})"
+
+def code_blocks_to_markdown(blocks):
+    for block in blocks or []:
+        if block["type"] == "paragraph":
+            paragraph = block["paragraph"]
+            yield INDENT
+            for elem in paragraph["elements"]:
+                if elem["type"] == 'textRun':
+                    textRun = elem["textRun"]
+                    yield textRun['text']
+            yield '\n'
+
+def table_cell_to_markdown(blocks):
+    for block in blocks or []:
+        if block["type"] == "paragraph":
+            paragraph = block["paragraph"]
+            yield from rich_elements_to_markdown(paragraph["elements"])
+
+def callout_blocks_to_markdown(blocks):
+    for block in blocks or []:
+        if block["type"] == "paragraph":
+            paragraph = block["paragraph"]
+            yield from paragraph_style_to_markdown(paragraph.get('style', {}), indent=4)
+            yield from rich_elements_to_markdown(paragraph["elements"])
+            yield '\n'
+
+def rich_elements_to_markdown(elements):
+    for elem in elements:
+        if elem["type"] == "textRun":
+            textRun = elem["textRun"]
+            style = textRun["style"]
+            link = style.get("link", None)
+            if style.get("bold", False):
+                yield "*"
+                yield escape(textRun['text'])
+                yield "*"
+            elif style.get("itatic", False):
+                yield "**"
+                yield escape(textRun['text'])
+                yield "**"
+            elif style.get("strikeThrough", False):
+                yield "~~"
+                yield escape(textRun['text'])
+                yield "~~"
+            elif style.get("underline", False):
+                yield "^"
+                yield escape(textRun['text'])
+                yield "^"
+            elif style.get("codeInline", False):
+                n, code = escape_code(textRun['text'])
+                yield "`" * n
+                yield code
+                yield "`" * n
+            elif link is not None:
+                yield '['
+                yield escape(textRun['text'])
+                yield ']('
+                yield unquote(link["url"])
+                yield ')'
+            else:
+                yield escape(textRun['text'])
+        elif elem["type"] == "docsLink":
+            docsLink = elem["docsLink"]
+            yield '<'
+            yield docsLink["url"]
+            yield '>'
+        elif elem["type"] == "equation":
+            equation = elem["equation"]
+            yield '$'
+            yield equation["equation"]
+            yield '$'
+
+def paragraph_style_to_markdown(style, indent=0):
+    h = style.get("headingLevel", None)
+    list = style.get("list", None)
+
+    if list is not None:
+        if prev_list_type != list["type"]:
+            yield '\n'
+            yield ' '*indent
+            yield INDENT * (list['indentLevel'] - 1)
+            if list["type"] == 'number':
+                yield '1. '
+            elif list["type"] == 'bullet':
+                yield '* '
+            elif list["type"] == "checkBox":
+                yield '- [ ] '
+            elif list["type"] == "checkedBox":
+                yield '- [X] '
+    else:
+        yield '\n'
+        yield ' '*indent
+        if h is not None:
+            yield '#' * h
+            yield ' '
+        elif style.get("quote", False):
+            yield '> '
 
 def to_markdown(content):
+    prev_list_type = None
+
     for block in content["body"]["blocks"]:
         if block["type"] == "paragraph":
             paragraph = block["paragraph"]
-            style = paragraph.get('style', {})
-            h = style.get("headingLevel", None)
-            if h is not None:
-                yield '#' * h
-                yield ' '
-            list = style.get("list", None)
-            if list is not None:
-                if list["type"] == 'number':
-                    yield '1. '
-                elif list["type"] == 'bullet':
-                    yield '* '
-                elif list["type"] == "checkBox":
-                    yield '- [ ] '
-                elif list["type"] == "checkedBox":
-                    yield '- [X] '
+            yield from paragraph_style_to_markdown(paragraph.get('style', {}))
+            yield from rich_elements_to_markdown(paragraph["elements"])
+            yield '\n'
+        elif block["type"] == "horizontalLine":
+            yield '-----\n'
+        elif block["type"] == "code":
+            code = block["code"]
+            yield '    :::'
+            yield code["language"].lower()
+            yield '\n'
+            yield from code_blocks_to_markdown(code["body"]["blocks"])
+        elif block["type"] == "callout":
+            callout = block["callout"]
+            yield '!!! callout ":'
+            yield callout["calloutEmojiId"]
+            yield ':"'
 
-            quote = style.get("quote", False)
-            if quote:
-                yield '> '
+            yield from callout_blocks_to_markdown(callout["body"]["blocks"])
 
-            for elem in paragraph["elements"]:
-                if elem["type"] == "textRun":
-                    textRun = elem["textRun"]
-                    style = textRun["style"]
-                    if style.get("bold", False):
-                        yield f"*{textRun['text']}*"
-                    elif style.get("itatic", False):
-                        yield f"**{textRun['text']}**"
-                    else:
-                        yield textRun['text']
+        elif block["type"] == "table":
+            table = block["table"]
+            yield '| '
+            yield ' | '.join(
+                ''.join(table_cell_to_markdown(cell["body"]["blocks"]))
+                for cell in table["tableRows"][0]["tableCells"])
+            yield ' |\n| '
+            yield ' | '.join('-' * table["columnSize"])
+            yield ' |\n'
 
-            yield '\n\n'
+            for row in table["tableRows"][1:]:
+                yield '| '
+                yield ' | '.join(
+                    ''.join(table_cell_to_markdown(cell["body"]["blocks"]))
+                    for cell in row["tableCells"])
+                yield ' |\n'
 
+            if table["rowSize"] == 1:
+                yield '| '
+                yield ' | '.join(' ' * table["columnSize"])
+                yield ' |\n'
 
 
 class FeishuTenant:
@@ -46,6 +176,7 @@ class FeishuTenant:
         self.url = config.EDITOR_URL
         self.app_id = config.FEISHU_APP_ID
         self.app_secret = config.FEISHU_APP_SECRET
+        self.folder_token = config.FEISHU_FOLDER_TOKEN
         self.tenant_access_token = self._get_tenant_access_token()
 
     def _get_tenant_access_token(self):
@@ -62,10 +193,10 @@ class FeishuTenant:
             Request(
             url="https://open.feishu.cn/open-apis/doc/v2/create",
                 method="POST",
-                data=json.dumps({}).encode(),
+                data=json.dumps({"FolderToken": self.folder_token}).encode(),
                 headers={
                     "Authorization": f"Bearer {self.tenant_access_token}",
-                "Content-Type": "application/json; charset=utf-8"}
+                    "Content-Type": "application/json; charset=utf-8"}
             ))
         result = json.load(response)
         assert result['code'] == 0
@@ -82,8 +213,7 @@ class FeishuTenant:
                 data=json.dumps({"token": token, "type": "doc", "link_share_entity": "tenant_editable"}).encode()))
         result = json.load(response)
         assert result['code'] == 0
-        return {"feishu_token_i": [result["data"]["objToken"]],
-                "revision_n": ["0"]}
+        return {"feishu_token_i": [token], "revision_n": ["0"]}
 
     def get_new_content(self, filename, metadata):
         token = metadata["feishu_token_i"][0]
@@ -104,5 +234,6 @@ class FeishuTenant:
         title = ''.join(elem['textRun']['text'] for elem in content["title"]["elements"])
         metadata["revision_n"] = [str(result['data']['revision'])]
         metadata["title_t"] = [title]
-        metadata["content"] = ''.join(to_markdown(content))
+        parts = list(to_markdown(content))
+        metadata["content"] = ''.join(parts[1:]) if parts else ''
         return metadata

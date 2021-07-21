@@ -1,5 +1,7 @@
 from markdown import Markdown
 
+def emoji_to_unicode(index, shortname, alias, uc, alt, title, category, options, md):
+    return alt
 
 class MarkdownParser:
 
@@ -17,7 +19,32 @@ class MarkdownParser:
 
     def convert(self, content):
         d = self.parse(content)
-        md = Markdown(extensions = [])
+        md = Markdown(
+            extensions = [
+                'pymdownx.arithmatex',
+                'pymdownx.tasklist',
+                'pymdownx.tilde',
+                'codehilite',
+                'sane_lists',
+                'tables',
+                'pymdownx.caret',
+                'admonition',
+                'pymdownx.emoji',
+                'attr_list'],
+            extension_configs = {
+                'pymdownx.tasklist': {
+                    "custom_checkbox": True
+                },
+                'pymdownx.arithmatex': {
+                    'generic': True,
+                },
+                'codehilite': {
+                    'guess_lang': False
+                },
+                'pymdownx.emoji': {
+                    'emoji_generator': emoji_to_unicode
+                }
+            })
         html = md.convert(d["content"])
         d["html"] = html
         return d

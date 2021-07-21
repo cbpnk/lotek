@@ -3,6 +3,7 @@ from wheezy.routing import PathRouter
 from wheezy.http import WSGIApplication, bootstrap_http_defaults, HTTPResponse, not_found, unauthorized, method_not_allowed, json_response, http_error
 from wheezy.template.engine import Engine
 from wheezy.template.ext.core import CoreExtension
+from wheezy.template.ext.code import CodeExtension
 from wheezy.template.loader import FileLoader, autoreload
 from mimetypes import guess_type
 from email.utils import parsedate_to_datetime, formataddr
@@ -23,7 +24,7 @@ except ImportError:
 
 engine = autoreload(Engine(
     loader=FileLoader([os.path.join(os.path.dirname(__file__), 'templates')]),
-    extensions=[CoreExtension()]))
+    extensions=[CoreExtension(), CodeExtension()]))
 STATIC_ROOT = os.path.join(os.path.dirname(__file__), 'static')
 CACHE_ROOT = config.CACHE_ROOT
 
