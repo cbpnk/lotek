@@ -6,7 +6,15 @@ from markdown.preprocessors import NormalizeWhitespace
 from markdown.extensions.meta import MetaPreprocessor
 
 
+def find_title(path):
+    from .config import config
+    from whoosh.query import Term
+    for hit in config.index.search(Term("path", path)):
+        return hit.get("title_t", [None])[0]
+
 def build_link(target, text=None):
+    if not text:
+        text = find_title(target) or target
     return f"/view/{target}" , text
 
 class WikiLinks(Pattern):
@@ -15,6 +23,7 @@ class WikiLinks(Pattern):
         target = m.group("target")
         text = m.group("text")
         text = text[1:] if text else None
+        self.md.wikilinks.add(target)
         url, text = build_link(target, text)
         a = etree.Element('a')
         a.text = text
@@ -27,10 +36,14 @@ class WikiLinkExtension(Extension):
 
     def extendMarkdown(self, md, md_globals):
         self.md = md
+        self.md.wikilinks = set()
         WIKILINK_RE = r'\[\[(?P<target>[@\w/0-9:_ -\.]+)(?P<text>(?:\|[\w/0-9:_ -]+)?)\]\]'
         pattern = WikiLinks(WIKILINK_RE)
         pattern.md = md
         md.inlinePatterns.add('wikilink', pattern, "<not_strong")
+
+    def reset(self):
+        self.md.wikilinks = set()
 
 
 def emoji_to_unicode(index, shortname, alias, uc, alt, title, category, options, md):
@@ -50,9 +63,8 @@ class MarkdownParser:
         d["content"] = '\n'.join(lines)
         return d
 
-    def convert(self, content):
-        d = self.parse(content)
-        md = Markdown(
+    def _md(self):
+        return Markdown(
             extensions = [
                 'pymdownx.arithmatex',
                 'pymdownx.tasklist',
@@ -79,7 +91,16 @@ class MarkdownParser:
                     'emoji_generator': emoji_to_unicode
                 }
             })
+
+    def convert(self, content):
+        d = self.parse(content)
+        md = self._md()
         return md.convert(d["content"])
+
+    def wikilinks(self, content):
+        md = self._md()
+        md.convert(content)
+        return md.wikilinks
 
     def format(self, metadata):
         body = metadata.pop("content", "")

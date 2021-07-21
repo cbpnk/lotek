@@ -63,7 +63,8 @@ def run_indexer():
         from whoosh.fields import Schema, ID, NUMERIC, DATETIME
         schema = Schema(
             path=ID(unique=True, stored=True),
-            content=NGRAMCJKTEXT())
+            content=NGRAMCJKTEXT(),
+            link=ID(stored=True))
         schema.add("*_i", ID(stored=True), glob=True)
         schema.add("*_t", NGRAMCJKTEXT(stored=True), glob=True)
         schema.add("*_n", NUMERIC(stored=True), glob=True)
@@ -86,8 +87,11 @@ def run_indexer():
             for path, content, is_new in repo.diff_commit(indexed_commit, head):
                 if path.endswith(".txt"):
                     metadata = parser.parse(content)
+                    wikilinks = parser.wikilinks(metadata["content"])
+                    link=list(wikilinks)
+                    link.sort()
                     func = writer.add_document if is_new else writer.update_document
-                    func(path=path, **metadata)
+                    func(path=path, link=link, **metadata)
                 elif path.endswith(".h.json"):
                     annotation = json.loads(content)
 
