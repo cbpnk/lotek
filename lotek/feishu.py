@@ -36,21 +36,46 @@ def code_blocks_to_markdown(blocks):
                     yield textRun['text']
             yield '\n'
 
-def table_cell_to_markdown(blocks):
+def table_cell_to_markdown(blocks, editor_url):
     for block in blocks or []:
         if block["type"] == "paragraph":
             paragraph = block["paragraph"]
-            yield from rich_elements_to_markdown(paragraph["elements"])
+            yield from rich_elements_to_markdown(paragraph["elements"], editor_url)
 
-def callout_blocks_to_markdown(blocks):
+def callout_blocks_to_markdown(blocks, editor_url):
     for block in blocks or []:
         if block["type"] == "paragraph":
             paragraph = block["paragraph"]
             yield from paragraph_style_to_markdown(paragraph.get('style', {}), indent=4)
-            yield from rich_elements_to_markdown(paragraph["elements"])
+            yield from rich_elements_to_markdown(paragraph["elements"], editor_url)
             yield '\n'
 
-def rich_elements_to_markdown(elements):
+
+def find_first_hit(doc_token):
+    from .config import config
+    from whoosh.query import Term
+    if doc_token:
+        for hit in config.index.search(Term("feishu_token_i", doc_token)):
+            return hit['path'], hit.get("title_t", [""])[0]
+
+def build_wiki_link(doc_url, editor_url):
+    if doc_url.startswith(editor_url + "/docs/"):
+        hit = find_first_hit(doc_url[len(editor_url)+6:])
+        if hit:
+            path, title = hit
+            yield '[['
+            yield path
+            if title:
+                yield '|'
+                yield title
+            yield ']]'
+            return
+
+    yield '<'
+    yield doc_url
+    yield '>'
+
+def rich_elements_to_markdown(elements, editor_url):
     for elem in elements:
         if elem["type"] == "textRun":
             textRun = elem["textRun"]
@@ -69,9 +94,9 @@ def rich_elements_to_markdown(elements):
                 yield escape(textRun['text'])
                 yield "~~"
             elif style.get("underline", False):
-                yield "^"
+                yield "^^"
                 yield escape(textRun['text'])
-                yield "^"
+                yield "^^"
             elif style.get("codeInline", False):
                 n, code = escape_code(textRun['text'])
                 yield "`" * n
@@ -87,9 +112,8 @@ def rich_elements_to_markdown(elements):
                 yield escape(textRun['text'])
         elif elem["type"] == "docsLink":
             docsLink = elem["docsLink"]
-            yield '<'
-            yield docsLink["url"]
-            yield '>'
+            doc_url = docsLink["url"]
+            yield from build_wiki_link(doc_url, editor_url)
         elif elem["type"] == "equation":
             equation = elem["equation"]
             yield '$'
@@ -122,14 +146,14 @@ def paragraph_style_to_markdown(style, indent=0):
         elif style.get("quote", False):
             yield '> '
 
-def to_markdown(content):
+def to_markdown(content, editor_url):
     prev_list_type = None
 
     for block in content["body"]["blocks"]:
         if block["type"] == "paragraph":
             paragraph = block["paragraph"]
             yield from paragraph_style_to_markdown(paragraph.get('style', {}))
-            yield from rich_elements_to_markdown(paragraph["elements"])
+            yield from rich_elements_to_markdown(paragraph["elements"], editor_url)
             yield '\n'
         elif block["type"] == "horizontalLine":
             yield '-----\n'
@@ -141,17 +165,30 @@ def to_markdown(content):
             yield from code_blocks_to_markdown(code["body"]["blocks"])
         elif block["type"] == "callout":
             callout = block["callout"]
-            yield '!!! callout ":'
+            background_color = to_rgba(callout.get("calloutBackgroundColor"))
+            border_color = to_rgba(callout.get("calloutBorderColor"))
+            text_color = to_rgba(callout.get("calloutTextColor"))
+            style = ''
+            if background_color:
+                style += f'background:{background_color};'
+            if border_color:
+                style += f'border:1px solid {border_color};'
+            if text_color:
+                style += f'color:{text_color};'
+            zoneid = callout['zoneId']
+            if style:
+                yield f'<style>.{zoneid} {{ {style} }}</style>\n'
+            yield f'!!! callout {zoneid} ":'
             yield callout["calloutEmojiId"]
             yield ':"'
 
-            yield from callout_blocks_to_markdown(callout["body"]["blocks"])
+            yield from callout_blocks_to_markdown(callout["body"]["blocks"], editor_url)
 
         elif block["type"] == "table":
             table = block["table"]
             yield '| '
             yield ' | '.join(
-                ''.join(table_cell_to_markdown(cell["body"]["blocks"]))
+                ''.join(table_cell_to_markdown(cell["body"]["blocks"], editor_url))
                 for cell in table["tableRows"][0]["tableCells"])
             yield ' |\n| '
             yield ' | '.join('-' * table["columnSize"])
@@ -160,7 +197,7 @@ def to_markdown(content):
             for row in table["tableRows"][1:]:
                 yield '| '
                 yield ' | '.join(
-                    ''.join(table_cell_to_markdown(cell["body"]["blocks"]))
+                    ''.join(table_cell_to_markdown(cell["body"]["blocks"], editor_url))
                     for cell in row["tableCells"])
                 yield ' |\n'
 
@@ -234,6 +271,6 @@ class FeishuTenant:
         title = ''.join(elem['textRun']['text'] for elem in content["title"]["elements"])
         metadata["revision_n"] = [str(result['data']['revision'])]
         metadata["title_t"] = [title]
-        parts = list(to_markdown(content))
+        parts = list(to_markdown(content, self.url))
         metadata["content"] = ''.join(parts[1:]) if parts else ''
         return metadata

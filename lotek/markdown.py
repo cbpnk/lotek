@@ -1,4 +1,37 @@
 from markdown import Markdown
+from markdown.extensions import Extension
+from markdown.inlinepatterns import Pattern
+from markdown.util import etree
+from markdown.preprocessors import NormalizeWhitespace
+from markdown.extensions.meta import MetaPreprocessor
+
+
+def build_link(target, text=None):
+    return f"/view/{target}" , text
+
+class WikiLinks(Pattern):
+
+    def handleMatch(self, m):
+        target = m.group("target")
+        text = m.group("text")
+        text = text[1:] if text else None
+        url, text = build_link(target, text)
+        a = etree.Element('a')
+        a.text = text
+        a.set('href', url)
+        a.set('target', '_parent')
+        return a
+
+
+class WikiLinkExtension(Extension):
+
+    def extendMarkdown(self, md, md_globals):
+        self.md = md
+        WIKILINK_RE = r'\[\[(?P<target>[@\w/0-9:_ -\.]+)(?P<text>(?:\|[\w/0-9:_ -]+)?)\]\]'
+        pattern = WikiLinks(WIKILINK_RE)
+        pattern.md = md
+        md.inlinePatterns.add('wikilink', pattern, "<not_strong")
+
 
 def emoji_to_unicode(index, shortname, alias, uc, alt, title, category, options, md):
     return alt
@@ -11,8 +44,8 @@ class MarkdownParser:
     def parse(self, content):
         md = Markdown(extensions = ['meta'])
         lines = content.split('\n')
-        for prep in md.preprocessors:
-            lines = prep.run(lines)
+        lines = NormalizeWhitespace(md).run(lines)
+        lines = MetaPreprocessor(md).run(lines)
         d = md.Meta.copy()
         d["content"] = '\n'.join(lines)
         return d
@@ -30,7 +63,8 @@ class MarkdownParser:
                 'pymdownx.caret',
                 'admonition',
                 'pymdownx.emoji',
-                'attr_list'],
+                'attr_list',
+                WikiLinkExtension()],
             extension_configs = {
                 'pymdownx.tasklist': {
                     "custom_checkbox": True
