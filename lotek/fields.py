@@ -1,32 +1,52 @@
 import re
 from whoosh.fields import TEXT
-from whoosh.analysis import StandardAnalyzer, Filter, NgramTokenizer
+from whoosh.analysis import StandardAnalyzer, Filter, NgramFilter
 from whoosh.query import And, Or, Term, Wildcard, SpanNear2
 
-NGRAM = NgramTokenizer(2)
+NGRAM = NgramFilter(2)
 CJK = re.compile(r'[\u2E80-\u9FFF\uF900-\uFAFF\uFE30-\uFE4F\U0001F200-\U0001F2FF\U00020000-\U0002FA1F]+')
 
-def split_cjk(text):
+def split_cjk(t):
     index = 0
+    startchar = None
+    endchar = None
+    if t.chars:
+        startchar = t.startchar
+        endchar = t.endchar
 
-    for m in CJK.finditer(text):
-        prev = text[index:m.start()]
+    for m in CJK.finditer(t.text):
+        prev = t.text[index:m.start()]
         if prev:
-            yield prev, False
-        yield m.group(), True
+            t.text = prev
+            if t.chars:
+                t.startchar = startchar + index
+                t.endchar = startchar + m.start()
+            yield t, False
+
+        t.text = m.group()
+        if t.chars:
+            t.startchar = startchar + m.start()
+            t.endchar = startchar + m.end()
+        yield t, True
         index = m.end()
 
-    last = text[index:]
+    last = t.text[index:]
     if last:
-        yield last, False
+        t.text = last
+        if t.chars:
+            t.startchar = startchar + index
+            t.endchar = endchar
+        yield t, False
 
-def ngram_cjk(text):
-    for text, is_cjk in split_cjk(text):
-        if is_cjk and len(text) != 1:
-            for t in NGRAM(text):
-                yield t.text, True
+
+def ngram_cjk(t):
+    for t, is_cjk in split_cjk(t):
+        if is_cjk and len(t.text) != 1:
+            for t in NGRAM([t]):
+                yield t, True
         else:
-            yield text, is_cjk
+            yield t, is_cjk
+
 
 class CJKFilter(Filter):
 
@@ -35,13 +55,10 @@ class CJKFilter(Filter):
         next_pos = 0
 
         for t in tokens:
-            assert not t.chars
             if t.mode == 'index':
                 next_pos += t.pos - last_origin_pos - 1
                 last_origin_pos = t.pos
-
-                for text, is_cjk in ngram_cjk(t.text):
-                    t.text = text
+                for t, is_cjk in ngram_cjk(t):
                     t.pos = next_pos
                     next_pos += 1
                     yield t
@@ -60,7 +77,7 @@ class SpanNear3(SpanNear2):
         return And(self.qs)
 
 def token2term(fieldname, t):
-    terms = [text2term(fieldname, text, is_cjk) for text, is_cjk in ngram_cjk(t.text)]
+    terms = [text2term(fieldname, t.text, is_cjk) for t, is_cjk in ngram_cjk(t)]
     if len(terms) == 1:
         return terms[0]
     return SpanNear3(terms)

@@ -56,18 +56,14 @@ def find_first_hit(doc_token):
     from whoosh.query import Term
     if doc_token:
         for hit in config.index.search(Term("feishu_token_i", doc_token)):
-            return hit['path'], hit.get("title_t", [""])[0]
+            return hit['path']
 
 def build_wiki_link(doc_url, editor_url):
     if doc_url.startswith(editor_url + "/docs/"):
         hit = find_first_hit(doc_url[len(editor_url)+6:])
         if hit:
-            path, title = hit
             yield '[['
-            yield path
-            if title:
-                yield '|'
-                yield title
+            yield hit
             yield ']]'
             return
 

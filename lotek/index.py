@@ -115,9 +115,9 @@ class Index:
 
     def __init__(self, config):
         from whoosh.index import open_dir
-        from whoosh.qparser import QueryParser, GtLtPlugin
+        from whoosh.qparser import MultifieldParser, GtLtPlugin
         self.ix = open_dir(config.INDEX_ROOT)
-        self.qp = QueryParser("content", schema=self.ix.schema)
+        self.qp = MultifieldParser(["title_t", "content"], schema=self.ix.schema)
         self.qp.add_plugin(GtLtPlugin())
 
     def search(self, query, **kwargs):

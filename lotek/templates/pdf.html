@@ -1,7 +1,8 @@
-@require(PDF_URL)
+@require(title, url)
 <!doctype html>
 <html>
 <head>
+<title>@title!e</title>
 <base href="/static/vendor/gh/hypothesis/via@@master/via/static/vendor/pdfjs-2/web/">
 <link rel="stylesheet" href="/static/vendor/gh/hypothesis/via@@master/via/static/vendor/pdfjs-2/web/viewer.css">
 
@@ -25,9 +26,16 @@ var hypothesisConfig = function() {
 </script>
 
 <script>
-var PROXY_PDF_URL = "@PDF_URL";
-var PDF_URL = "@PDF_URL";
+var PROXY_PDF_URL = "@url";
+var PDF_URL = "@url";
 var CLIENT_EMBED_URL = '/static/vendor/npm/hypothesis@@1.810.0/build/boot.js';
+
+document.addEventListener(
+    'webviewerloaded',
+    function (event) {
+        window.PDFViewerApplication.isViewerEmbedded = true;
+    }
+);
 </script>
 
 <script src="/static/vendor/gh/hypothesis/via@@master/via/static/js/pdfjs-init.js"></script>

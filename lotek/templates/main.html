@@ -1,4 +1,4 @@
-@require(EDITOR, EDITOR_URL)
+@require(EDITOR, EDITOR_URL, PLUGINS)
 <!doctype html>
 <html>
 <head>
@@ -27,8 +27,9 @@ window.addEventListener(
                 "/static/category.js",
                 "/static/user.js",
                 "/static/pdf.js",
-                "/static/tag.js",
-                "/static/kanban.js",
+@for p in PLUGINS:
+                "/static/@{p}.js",
+@end
                 "/static/uncategorized.js",
                 "/static/@{EDITOR}.js",
                 "/static/debug.js"

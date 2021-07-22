@@ -23,7 +23,7 @@ const Search = {
         m.request(
             {method: "POST",
              url: "/search/",
-             body: {q: vnode.attrs.key}}
+             body: {q: vnode.attrs.key, highlight: true}}
         ).then(
             function(result) {
                 vnode.state.results = result;
@@ -41,11 +41,15 @@ const Search = {
         return m("main",
                  vnode.state.results.map(
                      (result) =>
-                     m("div.tile",
-                       m("div.tile-content",
-                         m("div.tile-title.text-bold",
+                     m("div.card.my-1",
+                       m("div.card-header",
+                         m("div.card-title.h4",
                            m(Link, {key: result.path, doc: result})),
-                         m("div.tile-subtitle", result.path)))
+                         m("div.card-subtitle", result.path)),
+                       m("div.card-body",
+                         m.trust(result.excerpts)
+                        )
+                      )
                  ));
     }
 };

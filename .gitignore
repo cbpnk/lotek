@@ -1,10 +1,10 @@
 *~
-venv/
-git/
-index/
-persistent/
-cache/
+/venv/
+/git/
+/index/
+/persistent/
+/static/
 __pycache__/
 *.pyc
 *.pyo
-*.egg-info/
+/*.egg-info/

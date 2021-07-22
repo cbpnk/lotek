@@ -18,7 +18,7 @@ class Config:
     def __init__(self, mod):
         self._config = mod
         self.CONFIG_FILE = mod.__file__
-        self.CACHE_ROOT = mod.CACHE_ROOT
+        self.STATIC_ROOT = mod.STATIC_ROOT
 
     @cached_property
     def repo(self):
@@ -50,12 +50,12 @@ def load_config(filename):
             code = compile(f.read(), filename, 'exec')
         exec(code, d)
 
+    d.setdefault('PLUGINS', ['tag', 'kanban'])
     d.setdefault('EDITOR', 'textarea')
-    d.setdefault('EDITOR_URL', 'http://127.0.0.1:9001')
     d.setdefault('TXT_FORMAT', 'markdown')
     d.setdefault('REPO_ROOT', 'git')
     d.setdefault('INDEX_ROOT', 'index')
-    d.setdefault('CACHE_ROOT', 'cache')
+    d.setdefault('STATIC_ROOT', 'static')
     d.setdefault('__file__', None)
     return Config(mod)
 

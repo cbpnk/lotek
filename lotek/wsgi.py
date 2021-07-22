@@ -5,12 +5,14 @@ from wheezy.template.engine import Engine
 from wheezy.template.ext.core import CoreExtension
 from wheezy.template.ext.code import CodeExtension
 from wheezy.template.loader import FileLoader, autoreload
+from html import escape
 from mimetypes import guess_type
 from email.utils import parsedate_to_datetime, formataddr
 import jsonpatch
 import json
 from urllib.request import urlretrieve
 from shutil import move
+from warnings import catch_warnings
 from .config import config
 from .hypothesis import hypothesis_urls
 from .index import spawn_indexer
@@ -22,11 +24,16 @@ try:
 except ImportError:
     uwsgi = None
 
-engine = autoreload(Engine(
+engine = Engine(
     loader=FileLoader([os.path.join(os.path.dirname(__file__), 'templates')]),
-    extensions=[CoreExtension(), CodeExtension()]))
+    extensions=[CoreExtension(), CodeExtension()])
+
+with catch_warnings(record=True):
+    engine = autoreload(engine)
+
+engine.global_vars.update({'e': escape})
+
 STATIC_ROOT = os.path.join(os.path.dirname(__file__), 'static')
-CACHE_ROOT = config.CACHE_ROOT
 
 def sendfile(response, f, filename):
     if uwsgi:
@@ -35,7 +42,7 @@ def sendfile(response, f, filename):
         response.write_bytes(f.read())
 
 def vendor_file(request, name):
-    filename = os.path.join(config.CACHE_ROOT, name)
+    filename = os.path.join(config.STATIC_ROOT, name)
     try:
         f = open(filename, 'rb')
     except FileNotFoundError:
@@ -51,26 +58,41 @@ def vendor_file(request, name):
     return response
 
 def static_file(request, name):
-    filename = os.path.join(STATIC_ROOT, name)
+    filename = os.path.join(config.STATIC_ROOT, name)
     try:
         f = open(filename, 'rb')
     except FileNotFoundError:
-        return not_found()
+        filename = os.path.join(STATIC_ROOT, name)
+        try:
+            f = open(filename, 'rb')
+        except FileNotFoundError:
+            return not_found()
 
     response = HTTPResponse(content_type=guess_type(name)[0])
     with f:
         sendfile(response, f, filename)
     return response
 
+def _search(repo, commit, q, highlight):
+    for hit in config.index.search(q, terms=True if highlight else False):
+        d = dict(hit.fields())
+        obj = repo.get_object(commit, d["path"])
+        metadata = config.parser.parse(repo.get_data(obj).decode())
+        if highlight:
+            d["excerpts"] = hit.highlights("content", text=metadata["content"])
+        yield d
+
 
 def search(request):
     if request.method == 'GET':
         return default_page()
     elif request.method == 'POST':
+        commit = config.repo.get_latest_commit()
         q = request.form.get("q", "")
+        highlight = request.form.get("highlight", "")
         if q:
             q = "path:*.txt " + q
-            return json_response([hit.fields() for hit in config.index.search(q)])
+            return json_response([d for d in _search(config.repo, commit, q, highlight)])
         return json_response([])
 
 def get_txt_file(request, commit, filename):
@@ -88,11 +110,12 @@ def get_txt_file(request, commit, filename):
             response.headers.append(("ETag", obj.decode()))
             return response
         elif mime_type == 'text/html':
-            html = config.parser.convert(content.decode())
+            metadata, html = config.parser.convert(content.decode())
+            title = metadata.get("title_t", ["Untitled"])[0]
             response = HTTPResponse(content_type='text/html; charset=utf-8')
             response.headers.append(("Vary", "Accept"))
             template = engine.get_template('txt.html')
-            response.write_bytes(template.render({"HTML": html}).encode())
+            response.write_bytes(template.render({"title": title, "html": html}).encode())
             return response
         elif mime_type in ('text/plain', '*/*'):
             response = HTTPResponse(content_type='text/plain; charset=utf-8')
@@ -192,6 +215,15 @@ def pdf_file(request, path):
         except FileNotFoundError:
             return not_found()
 
+        commit = config.repo.get_latest_commit()
+        obj = config.repo.get_object(commit, f"{path}.txt")
+        if obj is not None:
+            content = config.repo.get_data(obj)
+            metadata = config.parser.parse(content.decode())
+            title = metadata.get("title_t", ["Untitled"])[0]
+        else:
+            title = ""
+
         with f:
             accept_header = request.environ.get('HTTP_ACCEPT', 'text/html')
 
@@ -201,7 +233,7 @@ def pdf_file(request, path):
                     response = HTTPResponse(content_type='text/html; charset=utf-8')
                     response.headers.append(("Vary", "Accept"))
                     template = engine.get_template('pdf.html')
-                    response.write(template.render({"PDF_URL": f"/files/{path}.pdf"}))
+                    response.write(template.render({"title": title, "url": f"/files/{path}.pdf"}))
                     return response
                 elif mime_type in ("application/pdf", "*/*"):
                     response = HTTPResponse(content_type='application/pdf')
@@ -215,7 +247,11 @@ def pdf_file(request, path):
 def default_page():
     response = HTTPResponse(content_type='text/html; charset=utf-8')
     template = engine.get_template('main.html')
-    response.write(template.render({"EDITOR": config._config.EDITOR, "EDITOR_URL": config.editor.url}))
+    response.write(
+        template.render({
+            "EDITOR": config._config.EDITOR,
+            "EDITOR_URL": config.editor.url,
+            "PLUGINS": config._config.PLUGINS}))
     return response
 
 def authenticate(request):

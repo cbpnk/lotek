@@ -95,7 +95,7 @@ class MarkdownParser:
     def convert(self, content):
         d = self.parse(content)
         md = self._md()
-        return md.convert(d["content"])
+        return d, md.convert(d["content"])
 
     def wikilinks(self, content):
         md = self._md()

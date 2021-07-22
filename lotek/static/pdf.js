@@ -1,6 +1,6 @@
 const PDFForm = {
     view: function(vnode) {
-        const path = vnode.attrs.path.slice(0, -3) + ".pdf";
+        const path = vnode.attrs.path.slice(0, -4) + ".pdf";
         return m("div.form-horizontal",
             m("div.form-group",
               m("a",
