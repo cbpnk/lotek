@@ -104,5 +104,5 @@ class MarkdownParser:
     def format(self, metadata):
         body = metadata.pop("content", "")
         return ''.join(
-            ''.join(f'{key}: {value}\n' for value in metadata[key])
+            ''.join(f'{key}: {value}\n' for value in sorted(metadata[key]))
             for key in sorted(metadata)).encode() + b'\n' + body.encode()
