@@ -22,7 +22,6 @@ window.addEventListener(
             const plugins = [
                 "/static/layout.js",
                 "/static/view.js",
-                "/static/title.js",
                 "/static/search.js",
                 "/static/category.js",
                 "/static/user.js",
@@ -31,8 +30,7 @@ window.addEventListener(
                 "/static/@{p}.js",
 @end
                 "/static/uncategorized.js",
-                "/static/@{EDITOR}.js",
-                "/static/debug.js"
+                "/static/@{EDITOR}.js"
             ];
 
             for (const filename of plugins) {

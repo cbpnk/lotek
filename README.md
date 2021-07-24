@@ -9,6 +9,7 @@
 * spectre.css
 * wheezy
 * dulwich
+* whoosh
 
 ```
 uwsgi uwsgi.ini

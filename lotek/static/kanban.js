@@ -260,19 +260,16 @@ const MilestoneForm = {
             );
         }
 
-
         return [
-            m("div.form-horizontal",
-              m("div.form-group",
-                m("div.col-3", m("label.form-label", "Start Date")),
-                m("div.col-9", started?m("label.form-label", doc.start_d[0]):m("button.form-input.btn.btn-sm.btn-primary", {onclick: start}, "Start"))
-               ),
-              m("div.form-group",
-                m("div.col-3", m("label.form-label", "End Date")),
-                m("div.col-9", ended?m("label.form-label", doc.end_d[0]):m("button.form-input.btn.btn-sm.btn-primary", {onclick: end}, "End"))
-               ),
-              m("div.form-group",
-                m("div.col-3", m("label.form-label", "Project")),
+            m("dl.text-small",
+              m("dt", "Start Date"),
+              m("dd",
+                started?doc.start_d[0]:vnode.state.patch?m("button.btn.btn-sm.btn-primary", {onclick: start}, "Start"):"N/A"),
+              m("dt", "End Date"),
+              m("dd",
+                ended?doc.end_d[0]:vnode.state.patch?m("button.btn.btn-sm.btn-primary", {onclick: end}, "End"):"N/A"),
+              m("dt", "Project"),
+              m("dd",
                 m(AutoCompleteInput,
                   {paths: vnode.attrs.doc.project_i,
                    query: "category_i:project",
@@ -283,8 +280,7 @@ const MilestoneForm = {
                ),
               m("div.form-group",
                 m(m.route.Link,
-                  {href: m.buildPathname("/kanban/:path...", {path: vnode.attrs.path}),
-                   "class": "form-input btn btn-primary"},
+                  {href: m.buildPathname("/kanban/:path...", {path: vnode.attrs.path})},
                   "Kanban View")
                )
              )
@@ -310,10 +306,11 @@ const ProjectForm = {
 
     view: function(vnode) {
         return m(
-            "ul.nav",
+            "dl.text-small",
+            m("dt", "Milestones"),
             (vnode.state.milestones || []).map(
                 (milestone) =>
-                m("li.nav-item", m(Link, {doc: milestone}))
+                m("dd.ml-2", m(Link, {doc: milestone}))
             )
         );
     }
@@ -346,53 +343,44 @@ const CardForm = {
         }
 
         return [
-            m("div.form-horizontal",
-              m("div.form-group",
-                m("div.col-3", m("label.form-label", "Schedule Date")),
-                m("div.col-9", scheduled?m("label.form-label", doc.schedule_d[0]):m("button.form-input.btn.btn-sm.btn-primary", {onclick: schedule}, "Schedule"))
-               ),
-              m("div.form-group",
-                m("div.col-3", m("label.form-label", "Start Date")),
-                m("div.col-9", started?m("label.form-label", doc.start_d[0]):m("button.form-input.btn.btn-sm.btn-primary", {onclick: start}, "Start"))
-               ),
-              m("div.form-group",
-                m("div.col-3", m("label.form-label", "End Date")),
-                m("div.col-9", ended?m("label.form-label", doc.end_d[0]):m("button.form-input.btn.btn-sm.btn-primary", {onclick: end}, "End"))
-               ),
-              m("div.form-group",
-                m("div.col-3", m("label.form-label", "Milestone")),
-                m("div.col-9",
-                  m(AutoCompleteInput,
-                    {paths: vnode.attrs.doc.milestone_i,
-                     query: "category_i:milestone AND NOT end_d:>=20000101",
-                     attribute: "milestone_i",
-                     patch: vnode.attrs.patch,
-                    }
-                   )
+            m("dl.text-small",
+              m("dt", "Schedule Date"),
+              m("dd.ml-2",
+                scheduled?doc.schedule_d[0]:vnode.attrs.patch?m("button.btn.btn-sm.btn-primary", {onclick: schedule}, "Schedule"):"N/A"),
+              m("dt", "Start Date"),
+              m("dd.ml-2",
+                started?doc.start_d[0]:vnode.attrs.patch?m("button.btn.btn-sm.btn-primary", {onclick: start}, "Start"):"N/A"),
+              m("dt", "End Date"),
+              m("dd.ml-2",
+                ended?doc.end_d[0]:vnode.attrs.patch?m("button.btn.btn-sm.btn-primary", {onclick: end}, "End"):"N/A"),
+              m("dt", "Milestone"),
+              m("dd",
+                m(AutoCompleteInput,
+                  {paths: vnode.attrs.doc.milestone_i,
+                   query: "category_i:milestone AND NOT end_d:>=20000101",
+                   attribute: "milestone_i",
+                   patch: vnode.attrs.patch,
+                  }
                  )
                ),
-              m("div.form-group",
-                m("div.col-3", m("label.form-label", "Assignee")),
-                m("div.col-9",
-                  m(AutoCompleteInput,
-                    {paths: vnode.attrs.doc.assignee_i,
-                     query: "category_i:operator",
-                     attribute: "assignee_i",
-                     patch: vnode.attrs.patch,
-                    }
-                   )
+              m("dt", "Assignee"),
+              m("dd",
+                m(AutoCompleteInput,
+                  {paths: vnode.attrs.doc.assignee_i,
+                   query: "category_i:operator",
+                   attribute: "assignee_i",
+                   patch: vnode.attrs.patch,
+                  }
                  )
                ),
-              m("div.form-group",
-                m("div.col-3", m("label.form-label", "Blocker")),
-                m("div.col-9",
-                  m(AutoCompleteInput,
-                    {paths: vnode.attrs.doc.blocker_i,
-                     query: "category_i:card AND NOT end_d:>=20000101",
-                     attribute: "blocker_i",
-                     patch: vnode.attrs.patch,
-                    }
-                   )
+              m("dt", "Blocker"),
+              m("dd",
+                m(AutoCompleteInput,
+                  {paths: vnode.attrs.doc.blocker_i,
+                   query: "category_i:card AND NOT end_d:>=20000101",
+                   attribute: "blocker_i",
+                   patch: vnode.attrs.patch,
+                  }
                  )
                )
              )

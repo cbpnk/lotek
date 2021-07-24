@@ -1,4 +1,5 @@
 import {levenshteinEditDistance} from "/static/vendor/npm/levenshtein-edit-distance@3.0.0/index.js";
+import {Title} from "/static/view.js";
 
 export const AutoCompleteInput = {
     oninit: function(vnode) {
@@ -36,7 +37,7 @@ export const AutoCompleteInput = {
                     vnode.state.value),
                  item]
             );
-            items.sort((a,b) => a[0] < b[0]);
+            items.sort((a,b) => a[0] - b[0]);
             items.slice(9);
             vnode.state.suggests = items.map(([_, item]) => item);
         }
@@ -68,44 +69,50 @@ export const AutoCompleteInput = {
                     );
         }
 
-        return m("div.input-group.form-autocomplete",
-                 (vnode.attrs.addon)?m("span.input-group-addon", vnode.attrs.addon):null,
-                 m("div.form-autocomplete-input.form-input",
-                   (vnode.attrs.paths || []).map(
-                       (path) =>
-                       m("div.popover",
-                         m("div.chip",
-                           (vnode.state.items[path].title_t || ["Untitled"])[0],
-                           m("button.btn.btn-clear", {onclick: function() {remove_path(path);}})),
-                         m("div.popover-container",
-                           m("div.card",
-                             m("div.card-header",
-                               m("div.card-title.h5", (vnode.state.items[path].title_t || ["Untitled"])[0]),
-                               m("div.card-subtitle", path)
-                              )
-                            )
-                          )
-                        )
-                   ),
-                   m("input.form-input[type=text]", {oninput, value: vnode.state.value})),
-                 (vnode.state.value==="")?
-                 []
-                 :
-                 m("ul.menu",
-                   vnode.state.suggests.map(
-                       (suggest) =>
-                       m("li.menu-item",
-                         m("a", {onclick: function() {add_path(suggest.path);}},
-                           m("div.tile",
-                             m("div.tile-content",
-                               m("div.tile-title.text-bold", (suggest.title_t || ["Untitled"])[0]),
-                               m("div.tile-subtitle", suggest.path)
-                              )
-                            )
-                          )
-                        ))
-                  )
-                );
+        return [
+            (vnode.attrs.paths || []).map(
+                (path) =>
+                m("div.my-2",
+                  m("div.popover",
+                    m("span.chip",
+                      m(Title, {doc: vnode.state.items[path], path}),
+                      (!vnode.attrs.patch)?null:
+                      m("button.btn.btn-clear", {onclick: function() {remove_path(path);}}),
+                      m("div.popover-container",
+                        m("div.card",
+                          m("div.card-header",
+                            m("div.card-title.h5", m(Title, {doc: vnode.state.items[path], path})),
+                            m("div.card-subtitle", path)
+                           )
+                         )
+                       )
+                     )
+                   )
+                 )
+            ),
+            (!vnode.attrs.patch)?null:
+            m("div.input-group.form-autocomplete",
+              (vnode.attrs.addon)?m("span.input-group-addon.addon-sm", vnode.attrs.addon):null,
+
+              m("input.form-input.input-sm[type=text]", {oninput, value: vnode.state.value}),
+              (vnode.state.value==="")?null:
+              m("ul.menu",
+                vnode.state.suggests.map(
+                    (suggest) =>
+                    m("li.menu-item",
+                      m("a", {onclick: function() {add_path(suggest.path);}},
+                        m("div.tile",
+                          m("div.tile-content",
+                            m("div.tile-title.text-bold", (suggest.title_t || ["Untitled"])[0]),
+                            m("div.tile-subtitle", suggest.path)
+                           )
+                         )
+                       )
+                     )
+                )
+               )
+             )
+        ];
 
     }
 }

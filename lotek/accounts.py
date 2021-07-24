@@ -7,7 +7,8 @@ def mkpasswd(plaintext, crypted=None):
     from crypt import crypt, mksalt, METHOD_BLOWFISH
     return crypt(plaintext, crypted or mksalt(METHOD_BLOWFISH))
 
-def replace_passwd(username, domain, passwd):
+def replace_passwd(username, domain, password, **kwargs):
+    passwd = mkpasswd(password)
     repo = config.repo
     filename = f"users/{domain}/.htpasswd"
     while True:
@@ -23,9 +24,8 @@ def replace_passwd(username, domain, passwd):
         users[username] = passwd
         content = ''.join(f"{a}:{b}\n" for a, b in sorted(users.items()))
 
-        commit = repo.replace_content(commit, filename, content.encode(), f"Update password of {username}@{domain}")
+        commit = repo.replace_content(commit, filename, content.encode(), f"Update password of {username}@{domain}", **kwargs)
         if commit:
-            spawn_indexer()
             break
 
 
@@ -36,12 +36,11 @@ def run_useradd():
     password = getpass("Password: ")
     confirm = getpass("Confirm: ")
     assert password == confirm
-    crypted = mkpasswd(password)
 
     filename = f"users/{domain}/{username}.txt"
     meta = {"title_t": [name], "category_i": ["user"]}
     assert create_new_txt(filename, meta), "user already exist"
-    replace_passwd(username, domain, crypted)
+    replace_passwd(username, domain, password)
 
 
 def run_passwd(email):
@@ -49,8 +48,7 @@ def run_passwd(email):
     password = getpass("Password: ")
     confirm = getpass("Confirm: ")
     assert password == confirm
-    crypted = mkpasswd(password)
-    replace_passwd(username, domain, crypted)
+    replace_passwd(username, domain, password)
 
 def check_passwd(email, password):
     try:

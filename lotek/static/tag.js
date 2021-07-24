@@ -3,29 +3,26 @@ import {Title} from "/static/view.js";
 
 const Widget = {
     view: function(vnode) {
-        return (vnode.attrs.edit)?null:
-            [m("div.divider", {"data-content": "Tags"}),
-             m(AutoCompleteInput,
-               {paths: vnode.attrs.doc.tag_i,
-                query: "category_i:tag",
-                attribute: "tag_i",
-                patch: vnode.attrs.patch,
-               }
-              )];
+        return [
+            m("div.divider", {"data-content": "Tags"}),
+            m(AutoCompleteInput,
+              {paths: vnode.attrs.doc.tag_i,
+               query: "category_i:tag",
+               attribute: "tag_i",
+               patch: vnode.attrs.patch,
+               addon: "Tag"
+              }
+             )
+        ];
     }
 }
 
 const TagForm = {
     view: function(vnode) {
-        return m("div.form-horizontal",
-            m("div.form-group",
-              m(m.route.Link,
-                {href: m.buildPathname("/search/", {q: `tag_i:${vnode.attrs.path}`}),
-                 "class": "form-input btn btn-primary"},
-                "Tagged By ", m(Title, {doc: vnode.attrs.doc})
-               )
-             )
-        );
+        return m(m.route.Link,
+                {href: m.buildPathname("/search/", {q: `tag_i:${vnode.attrs.path}`})},
+                "tagged with ", m(Title, {doc: vnode.attrs.doc})
+               );
     }
 }
 
@@ -37,4 +34,4 @@ export const categories = {
     }
 };
 
-export const top_widgets = [Widget];
+export const right_widgets = [Widget];

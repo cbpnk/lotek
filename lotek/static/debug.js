@@ -1,13 +1,30 @@
 const Debug = {
-
     oninit: function(vnode) {
+        vnode.state.active = false;
         vnode.state.value = "";
         vnode.state.disabled = "disabled";
+    },
+
+    view: function(vnode) {
+        function oninput(event) {
+            vnode.state.value = event.target.value;
+            vnode.state.disabled = "disabled";
+            try {
+                JSON.parse(vnode.state.value);
+                vnode.state.disabled = "";
+            } catch(e) {
+            }
+        }
+
+        function onclick() {
+            vnode.attrs.patch(JSON.parse(vnode.state.value));
+        }
+
         let doc = {};
         Object.assign(doc, vnode.attrs.doc);
         delete doc.content;
 
-        vnode.state.srcdoc = `<!doctype html>
+        let srcdoc = `<!doctype html>
 <html class="theme-light" dir="ltr">
 <head>
 <link rel="stylesheet" type="text/css" href="chrome://devtools-jsonview-styles/content/main.css">
@@ -38,34 +55,25 @@ var JSONView = {
 <script src="resource://devtools-client-jsonview/lib/require.js" data-main="resource://devtools-client-jsonview/viewer-config.js"></script>
 </body>
 </html>`;
-    },
 
-    view: function(vnode) {
-        function oninput(event) {
-            vnode.state.value = event.target.value;
-            vnode.state.disabled = "disabled";
-            try {
-                JSON.parse(vnode.state.value);
-                vnode.state.disabled = "";
-            } catch(e) {
-            }
-        }
-
-        function onclick() {
-            vnode.attrs.patch(JSON.parse(vnode.state.value));
-        }
-
-        return (vnode.attrs.edit)?null:[
-            m("div.divider", {"data-content": "Debug"}),
-            m("textarea", {oninput}, vnode.state.value),
-            m("button.btn.btn-primary", {onclick, disabled: vnode.state.disabled}, "PATCH"),
-            m(
-                "iframe",
-                {"srcdoc": vnode.state.srcdoc}
-            )
-        ];
-
+        return (vnode.attrs.patch)?m("div.off-canvas",
+                 m("button.off-canvas-toggle.btn.btn-primary",
+                   {onclick: function() {vnode.state.active=true;}},
+                   "Debug"),
+                 (!vnode.state.active)?null:
+                 m("div.off-canvas-sidebar.d-flex.active",
+                   {"style": "flex-direction: column;"},
+                   m("textarea", {oninput}, vnode.state.value),
+                   m("button.btn.btn-sm.btn-primary",
+                     {onclick, disabled: vnode.state.disabled}, "PATCH"),
+                   m("iframe", {"style": "margin: 0; padding: 0; border: none; height: 100%;", srcdoc})
+                  ),
+                 m("button.off-canvas-overlay",
+                   {onclick: function() {vnode.state.active=false;}},
+                   m("i.icon.icon-arrow-left")
+                  )
+                ):null;
     }
 }
 
-export const right_widgets = [Debug];
+export const left_widgets = [Debug];

@@ -11,12 +11,13 @@ from email.utils import parsedate_to_datetime, formataddr
 import jsonpatch
 import json
 from urllib.request import urlretrieve
+from urllib.parse import quote
 from shutil import move
 from warnings import catch_warnings
 from .config import config
 from .hypothesis import hypothesis_urls
 from .index import spawn_indexer
-from .accounts import check_passwd, get_name
+from .accounts import check_passwd, replace_passwd, get_name
 from .utils import create_new_txt
 
 try:
@@ -46,7 +47,7 @@ def vendor_file(request, name):
     try:
         f = open(filename, 'rb')
     except FileNotFoundError:
-        local_filename, headers = urlretrieve(f'https://cdn.jsdelivr.net/{name}')
+        local_filename, headers = urlretrieve(f'https://cdn.jsdelivr.net/{quote(name,safe="@/")}')
         os.makedirs(os.path.dirname(filename), exist_ok=True)
         move(local_filename, filename)
         f = open(filename, 'rb')
@@ -147,7 +148,7 @@ def txt_file(request, path):
         body = request.stream.read(request.content_length)
         meta = json.loads(body) if body else {}
 
-        if not create_new_txt(filename, meta, author=author):
+        if not create_new_txt(filename, meta, author=author, author_time=date):
             return http_error(409)
 
         return json_response("OK")
@@ -261,6 +262,22 @@ def authenticate(request):
         return unauthorized()
     return method_not_allowed()
 
+def change_password(request):
+    token = request.environ.get("HTTP_AUTHORIZATION", '')
+    if not token.startswith('Bearer '):
+        return unauthorized()
+    email = token[7:]
+    author = formataddr((get_name(email), email))
+
+    if request.method == 'POST':
+        if not check_passwd(email, request.form['password']):
+            return unauthorized()
+        date = parsedate_to_datetime(request.environ['HTTP_X_LOTEK_DATE'])
+        username, domain = email.split('@', 1)
+        replace_passwd(username, domain, request.form['new_password'], author=author, author_time=date)
+        return json_response(email)
+    return method_not_allowed()
+
 def router_middleware(options):
     def middleware(request, following):
         handler, args = router.match(request.environ["PATH_INFO"])
@@ -277,7 +294,8 @@ urls = [
     ("/files/{path:any}.pdf", pdf_file),
     ("/search/", search),
     ("/hypothesis/", hypothesis_urls),
-    ("/authenticate", authenticate)
+    ("/authenticate", authenticate),
+    ("/change-password", change_password),
 ]
 
 router = PathRouter()

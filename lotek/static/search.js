@@ -5,9 +5,9 @@ const Action = {
         return m("form.input-group.input-inline.dropdown.dropdown-right[action='/search/']",
                  m("input.form-input.input-sm[type=search][name='q']", {value: new URLSearchParams(window.location.search).get("q")}),
                  (registry.searches.length===0)?
-                 m("span.btn.btn-primary.btn-sm", "Search")
+                 m("span.btn.btn-primary.btn-sm.input-group-btn", "Search")
                  :
-                 m("span.btn.btn-primary.btn-sm.dropdown-toggle[tabindex=0]",
+                 m("span.btn.btn-primary.btn-sm.input-group-btn.dropdown-toggle[tabindex=0]",
                    "Search",
                    m("i.icon.icon-caret")),
                  m("ul.menu.text-left",

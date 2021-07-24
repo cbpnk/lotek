@@ -50,7 +50,7 @@ def load_config(filename):
             code = compile(f.read(), filename, 'exec')
         exec(code, d)
 
-    d.setdefault('PLUGINS', ['tag', 'kanban'])
+    d.setdefault('PLUGINS', ['tag', 'kanban', 'debug'])
     d.setdefault('EDITOR', 'textarea')
     d.setdefault('TXT_FORMAT', 'markdown')
     d.setdefault('REPO_ROOT', 'git')
