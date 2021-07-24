@@ -85,6 +85,7 @@ const View = {
                 }
             ).then(
                 function (result) {
+                    vnode.state.edit = false;
                     m.route.set(m.buildPathname("/view/:path...", {path: vnode.attrs.path}));
                 },
                 function (error) {

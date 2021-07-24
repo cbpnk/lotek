@@ -1,36 +1,21 @@
-const Widget = {
-    view: function(vnode) {
-
-        function onclick(event) {
-            if (vnode.attrs.edit) {
-                vnode.attrs.save();
-            } else {
-                m.route.set(m.buildPathname("/edit/:path...", {path: vnode.attrs.path}));
-            }
-        }
-        return [
-            (vnode.attrs.edit)?null:m("div.divider", {"data-content": "Feishu"}),
-            m("div.form-horizontal",
-              m("div.form-group",
-                m("div.column.col-3", m("label.form-label", "Revision")),
-                m("div.column", m("label.form-label", (vnode.attrs.doc.revision_n || [0])[0])),
-                   m("div",
-                     m("label.form-switch",
-                       m("input[type=checkbox][disabled=disabled]", {"checked": vnode.attrs.edit?"checked":"", oninput}),
-                       m("button.form-icon", {onclick}),
-                       "Edit")
-                    )
-               ),
-             )
-        ];
-    }
-};
-
 const Editor = {
     view: function(vnode) {
+        function onclick(event) {
+            vnode.attrs.save();
+        }
+
         return [
             m("aside.top",
-              m(Widget, {doc: vnode.attrs.doc, path: vnode.attrs.path, edit: vnode.attrs.edit, save: vnode.attrs.save})),
+              m("div.form-horizontal",
+                m("div.form-group",
+                  m("div.column.col-3", m("label.form-label", "Revision")),
+                  m("div.column", m("label.form-label", (vnode.attrs.doc.revision_n || [0])[0])),
+                  m("div",
+                    m("button.btn.btn-primary", {onclick}, "Save")
+                   )
+                 )
+               )
+             ),
             m("div",
               {"style": "grid-column: 1 / span 3; margin: 1em;"},
               m("iframe",
@@ -41,6 +26,4 @@ const Editor = {
     }
 }
 
-
 export const editor_widgets = [Editor];
-export const top_widgets = [Widget];
