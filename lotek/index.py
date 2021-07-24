@@ -90,19 +90,17 @@ def run_indexer():
 
                 if path.endswith(".h.json"):
                     annotation = json.loads(content)
-
-                    created = annotation["created"]
-                    if created.endswith("Z"):
-                        created = created[:-1] + "+00:00"
-                    date = datetime.fromisoformat(created)
-
+                    date = datetime.fromisoformat(annotation["created"])
                     func = writer.add_document if is_new else writer.update_document
                     func(
                         path=path,
                         content=annotation["text"],
                         group_i=[annotation["group"]],
                         created_d=[date],
-                        uri_i=[link["href"] for link in annotation["document"]["link"]])
+                        tag_t=annotation["tags"],
+                        reference_i=[f"{r}.h.json" for r in annotation.get("references", [])],
+                        uri_i=[annotation["uri"]]+[link["href"] for link in annotation.get("document", {}).get("link", [])]
+                    )
                 else:
                     metadata = parser.parse(content)
                     wikilinks = parser.wikilinks(metadata["content"])

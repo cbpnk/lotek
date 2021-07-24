@@ -284,7 +284,9 @@ def router_middleware(options):
         args.pop('route_name', None)
         if handler is not None:
             return handler(request, **args)
-        return default_page()
+        if request.method == 'GET':
+            return default_page()
+        return method_not_allowed()
     return middleware
 
 urls = [

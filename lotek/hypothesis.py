@@ -218,7 +218,7 @@ def normalize_annotation(payload, id, prefix):
     reconstruct_link(payload, "uri", prefix)
     for target in payload["target"]:
         reconstruct_link(target, "source", prefix)
-    for link in payload["document"]["link"]:
+    for link in payload.get("document", {}).get("link", []):
         reconstruct_link(link, "href", prefix)
     payload["permissions"] = {
         "read": [f'group:{payload["group"]}'],
@@ -243,20 +243,18 @@ def api_search(request):
 
     qs = parse_qs(request.environ["QUERY_STRING"])
 
-    from whoosh.query import And, Term, Wildcard
+    from whoosh.query import And, Or, Term, Wildcard
 
-    q = [
-        Wildcard("path", "*.h.json"),
-        Term("group_i", qs["group"][0])
-    ]
-
+    q = []
     for link in qs["uri"]:
         if link.startswith(prefix):
             link = "/" + link[len(prefix):]
         q.append(Term("uri_i", link))
-
-    q = And(q)
-
+    q = And([
+        Or(q),
+        Wildcard("path", "*.h.json"),
+        Term("group_i", qs["group"][0])
+    ])
     commit = repo.get_latest_commit()
 
     rows = [get_row(hit, repo, commit, prefix) for hit in config.index.search(q, sortedby="created_d")]
@@ -277,6 +275,20 @@ def rewrite_link(obj, key, prefix):
 def random_name():
     return ''.join(choices('0123456789abcdef', k=3))
 
+def clean_annotation(payload, prefix):
+    rewrite_link(payload, "uri", prefix)
+    for target in payload["target"]:
+        rewrite_link(target, "source", prefix)
+    for link in payload.get("document", {}).get("link", []):
+        rewrite_link(link, "href", prefix)
+    created = payload["created"]
+    if created.endswith("Z"):
+        payload['created'] = created[:-1] + "+00:00"
+    updated = payload.get("updated", None)
+    if updated and updated.endswith("Z"):
+        payload['updated'] = updated[:-1] + "+00:00"
+    del payload["permissions"]
+
 
 def api_annotations(request):
     scheme = request.environ["wsgi.url_scheme"]
@@ -284,21 +296,9 @@ def api_annotations(request):
     prefix = f"{scheme}://{host}/"
 
     payload = json.loads(request.stream.read(request.content_length))
-
-    rewrite_link(payload, "uri", prefix)
-    for target in payload["target"]:
-        rewrite_link(target, "source", prefix)
-    for link in payload["document"]["link"]:
-        rewrite_link(link, "href", prefix)
-
-    created = payload["created"]
-    if created.endswith("Z"):
-        created = created[:-1] + "+00:00"
-    date = datetime.fromisoformat(created)
-
-    del payload["permissions"]
+    clean_annotation(payload, prefix)
+    date = datetime.fromisoformat(payload['created'])
     content = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(',',':'))
-
     email = payload["user"][5:]
     author = formataddr((get_name(email), email))
 
@@ -315,6 +315,35 @@ def api_annotations(request):
     normalize_annotation(payload, filename[:-7], prefix)
     return json_response(payload)
 
+def api_annotation_update(request, id):
+    if request.method in ("PUT", "PATCH"):
+        filename = f'{id}.h.json'
+        scheme = request.environ["wsgi.url_scheme"]
+        host = request.environ["HTTP_HOST"]
+        prefix = f"{scheme}://{host}/"
+
+        payload = json.loads(request.stream.read(request.content_length))
+        clean_annotation(payload, prefix)
+        date = datetime.fromisoformat(payload['updated'])
+        content = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(',',':'))
+        email = payload["user"][5:]
+        author = formataddr((get_name(email), email))
+
+        repo = config.repo
+        while True:
+            commit = repo.get_latest_commit()
+            if repo.get_object(commit, filename) is None:
+                return not_found()
+
+            if repo.replace_content(commit, filename, content.encode(), f'Update: {filename}', author, date):
+                spawn_indexer()
+                break
+
+        normalize_annotation(payload, filename[:-7], prefix)
+        return json_response(payload)
+    return method_not_allowed()
+
+
 hypothesis_urls = [
     ("api/", api),
     ("api/search", api_search),
@@ -323,5 +352,6 @@ hypothesis_urls = [
     ("api/groups", api_groups),
     ("api/profile", api_profile),
     ("api/profile/groups", api_profile_groups),
-    ("api/annotations", api_annotations)
+    ("api/annotations/{id:any}", api_annotation_update),
+    ("api/annotations", api_annotations),
 ]
