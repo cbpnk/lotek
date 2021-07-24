@@ -392,7 +392,7 @@ function format_date(date) {
     return `${date.getFullYear()}-${date.getMonth()+1}-${date.getDate()}`;
 }
 
-function format_card(card, start, end, today) {
+function format_card(card, row, start, end, today) {
     let start_d = card.start_d[0];
     let end_d = card.end_d;
     let start_date = new Date(start_d.slice(0,4), start_d.slice(4,6) - 1, start_d.slice(6,8));
@@ -402,47 +402,48 @@ function format_card(card, start, end, today) {
         end_date = new Date(end_d.slice(0,4), end_d.slice(4,6) - 1, end_d.slice(6,8));
     }
 
+    let start_column = 1 + ((start_date <= start)?0:((start_date.valueOf() - start.valueOf()) / 86400000));
+    let end_column = 2 + ((end_date && end_date < end)?((end_date.valueOf() - start.valueOf())/86400000):6);
 
-    let events = m(
-        "div.calendar-events",
-        m(Link, {doc: card, "class": "calendar-event bg-success text-light"}));
+    return [
+        [0,1,2,3,4,5,6].map(
+            function(_, i) {
+                let date = new Date(start.valueOf() + 86400000 * i);
+                let date_item = m("button.date-item", date.getDate());
+                let classes = "";
 
-    let elems = [0,1,2,3,4,5,6].map(
-        function(_, i) {
-            let date = new Date(start.valueOf() + 86400000 * i);
-            let date_item = m("button.date-item", date.getDate());
-            let classes = ".calendar-date";
-            let body = null;
-
-            if (date < today) {
-                if (date.getMonth() != today.getMonth()) {
-                    classes = classes + ".prev-month";
+                if (date < today) {
+                    if (date.getMonth() != today.getMonth()) {
+                        classes = classes + " prev-month";
+                    }
+                } else if (date < today) {
+                    if (date.getMonth() != today.getMonth()) {
+                        classes = classes + " next-month";
+                    }
                 }
-            } else if (date < today) {
-                if (date.getMonth() != today.getMonth()) {
-                    classes = classes + ".next-month";
+
+                if ((date >= start_date) && ((!end_date) || (date <= end_date))) {
+                    classes = classes + " calendar-range";
                 }
-            }
 
-            if ((date.valueOf() >= start_date.valueOf()) && ((!end_date) || (date.valueOf() <= end_date.valueOf()))) {
-                classes = classes + ".calendar-range";
-            }
+                if (date.valueOf() == start_date.valueOf()) {
+                    classes = classes + " range-start";
+                } else if (date.valueOf() == end_date?.valueOf()) {
+                    classes = classes + " range-end";
+                }
 
-            if ((date.valueOf() == start.valueOf()) && (start_date.valueOf() < start.valueOf())) {
-                body = events;
+                return m("div",
+                         {"class": classes,
+                          "style": `grid-column-start: ${i+1}; grid-column-end: ${i+2}; z-index: 1; grid-row-start: ${row}; grid-row-end: ${row+1};`
+                         },
+                         m("div.calendar-date", {style: "max-width: none; border-bottom: .05rem solid #dadee4;"},
+                           m("button.date-item", date.getDate())));
             }
-
-            if (date.valueOf() == start_date.valueOf()) {
-                classes = classes + ".range-start";
-                body = events;
-            } else if (date.valueOf() == end_date?.valueOf()) {
-                classes = classes + ".range-end";
-            }
-
-            return m(`div.${classes}`, date_item, body);
-        }
-    );
-    return elems;
+        ),
+        m("div.calendar-events",
+          {style: `grid-column-start: ${start_column}; grid-column-end: ${end_column}; z-index: 2; grid-row-start: ${row}; grid-row-end: ${row}; margin-top: 2em;`},
+          m(Link, {doc: card, "class": "calendar-event text-light p-2 " + ((end_date)?"bg-success":"bg-primary")}))
+    ];
 }
 
 
@@ -489,7 +490,8 @@ const Calendar = {
                      )
                     ),
                    m("div.calendar-body",
-                     vnode.state.cards.map((i) => format_card(i, start, end, today))
+                     {style: "display: grid; grid-template-columns: repeat(7, 1fr);"},
+                     vnode.state.cards.map((card, i) => format_card(card, i+1, start, end, today))
                     )
                   )
                 );
