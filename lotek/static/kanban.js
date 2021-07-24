@@ -377,7 +377,7 @@ const CardForm = {
               m("dd",
                 m(AutoCompleteInput,
                   {paths: vnode.attrs.doc.blocker_i,
-                   query: "category_i:card AND NOT end_d:>=20000101",
+                   query: `category_i:card AND NOT end_d:>=20000101 AND NOT path:${vnode.attrs.path}`,
                    attribute: "blocker_i",
                    patch: vnode.attrs.patch,
                   }
