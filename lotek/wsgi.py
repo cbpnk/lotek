@@ -76,7 +76,15 @@ def static_file(request, name):
     return response
 
 def _search(repo, commit, q, highlight):
-    for hit in config.index.search(q, terms=True if highlight else False):
+    highlighter = None
+    if highlight:
+        from whoosh.highlight import Highlighter, HtmlFormatter
+        highlighter = Highlighter(formatter=HtmlFormatter(tagname="mark"))
+
+    for hit in config.index.search(
+            q,
+            terms=True if highlight else False,
+            highlighter=highlighter):
         d = dict(hit.fields())
         obj = repo.get_object(commit, d["path"])
         metadata = config.parser.parse(repo.get_data(obj).decode())

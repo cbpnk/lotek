@@ -121,14 +121,17 @@ class Index:
         self.qp = MultifieldParser(["title_t", "content"], schema=self.ix.schema)
         self.qp.add_plugin(GtLtPlugin())
 
-    def search(self, query, **kwargs):
+    def search(self, query, *, highlighter=None, **kwargs):
         if isinstance(query, str):
             q = self.qp.parse(query)
         else:
             q = query
 
         with self.ix.searcher() as searcher:
-            for hit in searcher.search(q, collapse="path", **kwargs):
+            results = searcher.search(q, collapse="path", **kwargs)
+            if highlighter:
+                results.highlighter = highlighter
+            for hit in results:
                 yield hit
 
 
