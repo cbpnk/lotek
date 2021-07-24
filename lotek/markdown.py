@@ -28,7 +28,6 @@ class WikiLinks(Pattern):
         a = etree.Element('a')
         a.text = text
         a.set('href', url)
-        a.set('target', '_parent')
         return a
 
 

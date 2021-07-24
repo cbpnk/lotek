@@ -85,14 +85,10 @@ def run_indexer():
                 return
 
             for path, content, is_new in repo.diff_commit(indexed_commit, head):
-                if path.endswith(".txt"):
-                    metadata = parser.parse(content)
-                    wikilinks = parser.wikilinks(metadata["content"])
-                    link=list(wikilinks)
-                    link.sort()
-                    func = writer.add_document if is_new else writer.update_document
-                    func(path=path, link=link, **metadata)
-                elif path.endswith(".h.json"):
+                if os.path.basename(path).startswith("."):
+                    continue
+
+                if path.endswith(".h.json"):
                     annotation = json.loads(content)
 
                     created = annotation["created"]
@@ -107,6 +103,13 @@ def run_indexer():
                         group_i=[annotation["group"]],
                         created_d=[date],
                         uri_i=[link["href"] for link in annotation["document"]["link"]])
+                else:
+                    metadata = parser.parse(content)
+                    wikilinks = parser.wikilinks(metadata["content"])
+                    link=list(wikilinks)
+                    link.sort()
+                    func = writer.add_document if is_new else writer.update_document
+                    func(path=path, link=link, **metadata)
 
             repo.update_indexed_commit(indexed_commit, head)
 

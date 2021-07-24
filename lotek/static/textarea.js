@@ -38,7 +38,10 @@ const Editor = {
                   {value: (vnode.attrs.doc.title_t || [""])[0]}),
                 m("button.input-group-btn.btn.btn-primary", "Save"),
                 m("button.btn.input-group-btn",
-                  {onclick: vnode.attrs.hide},
+                  {onclick: function(event) {
+                      event.preventDefault();
+                      vnode.attrs.hide();
+                  }},
                   "Cancel")
                ),
               m("textarea[name='content']",

@@ -1,11 +1,10 @@
-@require(title, url)
+@require(title, html)
 <!doctype html>
 <html>
 <head>
 <title>@title!e</title>
-<base href="/static/vendor/gh/hypothesis/via@@master/via/static/vendor/pdfjs-2/web/">
+<base target="_parent">
 <link rel="stylesheet" href="/static/vendor/gh/hypothesis/via@@master/via/static/vendor/pdfjs-2/web/viewer.css">
-
 <script type="application/json" class="js-hypothesis-config">
 {"assetRoot": "/static/vendor/npm/hypothesis@@1.810.0/",
  "sidebarAppUrl": "/static/app.html"
@@ -26,14 +25,16 @@ var hypothesisConfig = function() {
 </script>
 
 <script>
-var PROXY_PDF_URL = "@url";
-var PDF_URL = "@url";
+var PDF_URL = `${window.location.protocol}//${window.location.host}${window.location.pathname}`;
+var PROXY_PDF_URL = PDF_URL;
 var CLIENT_EMBED_URL = '/static/vendor/npm/hypothesis@@1.810.0/build/boot.js';
 
 document.addEventListener(
     'webviewerloaded',
     function (event) {
-        window.PDFViewerApplication.isViewerEmbedded = true;
+        window.PDFViewerApplicationOptions.set('workerSrc', '/static/vendor/gh/hypothesis/via@@master/via/static/vendor/pdfjs-2/build/pdf.worker.js');
+        window.PDFViewerApplicationOptions.set('cMapUrl', '/static/vendor/gh/hypothesis/via@@master/via/static/vendor/pdfjs-2/web/cmaps/');
+        window.PDFViewerApplicationOptions.set('imageResourcesPath', '/static/vendor/gh/hypothesis/via@@master/via/static/vendor/pdfjs-2/web/images/');
     }
 );
 </script>
@@ -124,7 +125,7 @@ document.addEventListener(
               <span data-l10n-id="download_label">Download</span>
             </button>
 
-            <a href="#" id="secondaryViewBookmark" class="secondaryToolbarButton bookmark visibleSmallView" title="Current view (copy or open in new window)" tabindex="55" data-l10n-id="bookmark">
+            <a href="#" id="secondaryViewBookmark" class="secondaryToolbarButton bookmark visibleSmallView" title="Current view (copy or open in new window)" tabindex="55" data-l10n-id="bookmark" target="_new">
               <span data-l10n-id="bookmark_label">Current View</span>
             </a>
 
@@ -226,7 +227,7 @@ document.addEventListener(
                 <button id="download" class="toolbarButton download hiddenMediumView" title="Download" tabindex="34" data-l10n-id="download">
                   <span data-l10n-id="download_label">Download</span>
                 </button>
-                <a href="#" id="viewBookmark" class="toolbarButton bookmark hiddenSmallView" title="Current view (copy or open in new window)" tabindex="35" data-l10n-id="bookmark">
+                <a href="#" id="viewBookmark" class="toolbarButton bookmark hiddenSmallView" title="Current view (copy or open in new window)" tabindex="35" data-l10n-id="bookmark" target="_new">
                   <span data-l10n-id="bookmark_label">Current View</span>
                 </a>
 

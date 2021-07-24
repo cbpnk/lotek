@@ -12,13 +12,14 @@ import jsonpatch
 import json
 from urllib.request import urlretrieve
 from urllib.parse import quote
+from contextlib import nullcontext
 from shutil import move
 from warnings import catch_warnings
 from .config import config
 from .hypothesis import hypothesis_urls
 from .index import spawn_indexer
 from .accounts import check_passwd, replace_passwd, get_name
-from .utils import create_new_txt
+from .utils import create_new_txt, import_file
 
 try:
     import uwsgi
@@ -92,49 +93,72 @@ def search(request):
         q = request.form.get("q", "")
         highlight = request.form.get("highlight", "")
         if q:
-            q = "path:*.txt " + q
             return json_response([d for d in _search(config.repo, commit, q, highlight)])
         return json_response([])
 
-def get_txt_file(request, commit, filename):
+def get_repo_file(request, commit, filename):
     obj = config.repo.get_object(commit, filename)
     if obj is None:
         return not_found()
     content = config.repo.get_data(obj)
 
-    accept_header = request.environ.get('HTTP_ACCEPT', 'text/plain')
-    for mime_type in accept_header.split(","):
-        mime_type = mime_type.strip().split(";", 1)[0]
-        if mime_type == 'application/json':
-            response = json_response(config.parser.parse(content.decode()))
-            response.headers.append(("Vary", "Accept"))
-            response.headers.append(("ETag", obj.decode()))
-            return response
-        elif mime_type == 'text/html':
-            metadata, html = config.parser.convert(content.decode())
-            title = metadata.get("title_t", ["Untitled"])[0]
-            response = HTTPResponse(content_type='text/html; charset=utf-8')
-            response.headers.append(("Vary", "Accept"))
-            template = engine.get_template('txt.html')
-            response.write_bytes(template.render({"title": title, "html": html}).encode())
-            return response
-        elif mime_type in ('text/plain', '*/*'):
-            response = HTTPResponse(content_type='text/plain; charset=utf-8')
-            response.headers.append(("Vary", "Accept"))
-            response.headers.append(("ETag", obj.decode()))
-            response.write_bytes(content)
-            return response
+    ext = os.path.splitext(filename)[1][1:]
+    content_type = guess_type(filename)[0] or "application/octet-stream"
 
-    return http_error(406)
+    if ext != 'txt':
+        fullname = os.path.join(config._config.REPO_ROOT, 'media', filename)
+        try:
+            f = open(fullname, 'rb')
+        except FileNotFoundError:
+            return not_found()
+    else:
+        f = nullcontext()
+
+    with f:
+        accept_header = request.environ.get('HTTP_ACCEPT', 'text/html')
+        for mime_type in accept_header.split(","):
+            mime_type = mime_type.strip().split(";", 1)[0]
+            if mime_type == 'application/json':
+                response = json_response(config.parser.parse(content.decode()))
+                response.headers.append(("Vary", "Accept"))
+                response.headers.append(("ETag", obj.decode()))
+                return response
+            elif mime_type == 'text/html':
+                metadata, html = config.parser.convert(content.decode())
+                title = metadata.get("title_t", ["Untitled"])[0]
+                response = HTTPResponse(content_type='text/html; charset=utf-8')
+                response.headers.append(("Vary", "Accept"))
+                template = engine.get_template(f'{ext}.html')
+                response.write_bytes(template.render({"title": title, "html": html}).encode())
+                return response
+            elif mime_type in (content_type, '*/*'):
+                if content_type == 'text/plain':
+                    response = HTTPResponse(content_type='text/plain; charset=utf-8')
+                    response.headers.append(("Vary", "Accept"))
+                    response.headers.append(("ETag", obj.decode()))
+                    response.write_bytes(content)
+                    return response
+                metadata = config.parser.parse(content.decode())
+                response = HTTPResponse(content_type=content_type)
+                title = metadata.get("title_t", [None])[0]
+                response.headers.append(("Vary", "Accept"))
+                if title:
+                    response.headers.append(("Content-Disposition", "attachment; filename="+quote(title)))
+                sendfile(response, f, fullname)
+                return response
+
+        return http_error(406)
 
 
-def txt_file(request, path):
-    filename = f'{path}.txt'
+def repo_file(request, filename):
+    if os.path.basename(filename).startswith("."):
+        return not_found()
+
     repo = config.repo
 
     if request.method == 'GET':
         commit = repo.get_latest_commit()
-        return get_txt_file(request, commit, filename)
+        return get_repo_file(request, commit, filename)
 
     parser = config.parser
     token = request.environ.get("HTTP_AUTHORIZATION", '')
@@ -173,7 +197,7 @@ def txt_file(request, path):
                 spawn_indexer()
                 break
 
-        return get_txt_file(request, commit, filename)
+        return get_repo_file(request, commit, filename)
 
     elif request.method == 'PATCH':
         date = parsedate_to_datetime(request.environ['HTTP_X_LOTEK_DATE'])
@@ -201,49 +225,25 @@ def txt_file(request, path):
                 spawn_indexer()
                 break
 
-        return get_txt_file(request, new_commit, filename)
+        return get_repo_file(request, new_commit, filename)
     else:
         return method_not_allowed()
 
 
-def pdf_file(request, path):
-    filename = f'{path}.pdf'
+def upload_file(request):
+    if request.method == 'POST':
+        date = parsedate_to_datetime(request.environ['HTTP_X_LOTEK_DATE'])
+        token = request.environ.get("HTTP_AUTHORIZATION", '')
+        if not token.startswith('Bearer '):
+            return unauthorized()
+        email = token[7:]
+        author = formataddr((get_name(email), email))
 
-    if request.method == 'GET':
-        fullname = os.path.join(config._config.REPO_ROOT, 'media', filename)
-        try:
-            f = open(fullname, 'rb')
-        except FileNotFoundError:
-            return not_found()
+        f = request.files.get('file', [None])[0]
 
-        commit = config.repo.get_latest_commit()
-        obj = config.repo.get_object(commit, f"{path}.txt")
-        if obj is not None:
-            content = config.repo.get_data(obj)
-            metadata = config.parser.parse(content.decode())
-            title = metadata.get("title_t", ["Untitled"])[0]
-        else:
-            title = ""
-
-        with f:
-            accept_header = request.environ.get('HTTP_ACCEPT', 'text/html')
-
-            for mime_type in accept_header.split(","):
-                mime_type = mime_type.strip().split(";", 1)[0]
-                if mime_type == 'text/html':
-                    response = HTTPResponse(content_type='text/html; charset=utf-8')
-                    response.headers.append(("Vary", "Accept"))
-                    template = engine.get_template('pdf.html')
-                    response.write(template.render({"title": title, "url": f"/files/{path}.pdf"}))
-                    return response
-                elif mime_type in ("application/pdf", "*/*"):
-                    response = HTTPResponse(content_type='application/pdf')
-                    response.headers.append(("Vary", "Accept"))
-                    sendfile(response, f, fullname)
-                    return response
-        return http_error(406)
-    else:
-        return method_not_allowed()
+        filename = import_file(f.filename, f.file, author=author, author_time=date)
+        return json_response(filename)
+    return method_not_allowed()
 
 def default_page():
     response = HTTPResponse(content_type='text/html; charset=utf-8')
@@ -290,8 +290,8 @@ def router_middleware(options):
 urls = [
     ("/static/vendor/{name:any}", vendor_file),
     ("/static/{name:any}", static_file),
-    ("/files/{path:any}.txt", txt_file),
-    ("/files/{path:any}.pdf", pdf_file),
+    ("/files/{filename:any}", repo_file),
+    ("/files/", upload_file),
     ("/search/", search),
     ("/hypothesis/", hypothesis_urls),
     ("/authenticate", authenticate),
@@ -303,7 +303,7 @@ router.add_routes(urls)
 
 application = WSGIApplication(
     [bootstrap_http_defaults, router_middleware],
-    {})
+    {'MAX_CONTENT_LENGTH': 1024**3})
 
 
 def run_server():

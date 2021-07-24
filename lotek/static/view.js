@@ -1,44 +1,5 @@
 import {get_token} from "/static/user.js";
 
-const Action = {
-    view: function(vnode) {
-        let token = get_token();
-
-        function random_char() {
-            return '0123456789abcdef'[Math.floor(Math.random() * 16)];
-        }
-
-        function random_name() {
-            return random_char() + random_char() + random_char();
-        }
-
-        function create_new_file() {
-            const path = `${random_name()}/${random_name()}/${random_name()}.txt`;
-            m.request(
-                {method: "PUT",
-                 url: m.buildPathname("/files/:path...", {path}),
-                 headers: {'X-Lotek-Date': (new Date()).toUTCString(),
-                           'Authorization': token}}
-            ).then(
-                function (result) {
-                    m.route.set(m.buildPathname("/view/:path...", {path}));
-                },
-                function (error) {
-                    if (error.code === 409) {
-                        create_new_file()
-                    }
-                }
-            );
-        }
-
-        if (token) {
-            return m("div.input-group.input-inline",
-                     m("button.btn.btn-primary.btn-sm",
-                       {onclick: create_new_file},
-                       "New"));
-        }
-    }
-}
 
 const View = {
     oninit: function(vnode) {
@@ -76,7 +37,7 @@ const View = {
                          params: {path: vnode.attrs.path},
                          headers: {'X-Lotek-Date': (new Date()).toUTCString(),
                                    'Content-Type': "application/json",
-                                   'Authorization': token},
+                                   'Authorization': `Bearer ${token}`},
                          body: {"title_t": ["Home"]}}
                     ).then(
                         function(result) {
@@ -118,7 +79,7 @@ const View = {
                  url: "/files/:path...",
                  params: {path: vnode.attrs.path},
                  headers: {'X-Lotek-Date': (new Date()).toUTCString(),
-                           'Authorization': token},
+                           'Authorization': `Bearer ${token}`},
                  responseType: "json",
                  extract: function(xhr) { return {etag: xhr.getResponseHeader("ETag"), response: xhr.response}; }
                 }
@@ -139,7 +100,7 @@ const View = {
                  params: {path: vnode.attrs.path},
                  headers: {'If-Match': vnode.state.etag,
                            'X-Lotek-Date': (new Date()).toUTCString(),
-                           'Authorization': token},
+                           'Authorization': `Bearer ${token}`},
                  body: body,
                  responseType: "json",
                  extract: function(xhr) { return {etag: xhr.getResponseHeader("ETag"), response: xhr.response}; }
@@ -165,22 +126,24 @@ const View = {
             vnode.state.edit = false;
         }
 
-        return (vnode.state.edit)?m(registry.editor_widgets[0],{hide: hide_edit, patch, save, path: vnode.attrs.path, doc: vnode.state.doc}):[
+        if (vnode.state.edit) {
+            return m(registry.editor_widgets[0],
+                     {hide: hide_edit,
+                      patch, save,
+                      path: vnode.attrs.path,
+                      doc: vnode.state.doc});
+        }
+
+        return [
             m("main",
               m("iframe",
                 {style: `margin: 0; border: 0; padding: 0; width: 100%; height: 100%;`,
-                 src: m.buildPathname("/files/:path...", {path: vnode.attrs.path})
+                 src: m.buildPathname("/files/:path...", {path: vnode.attrs.path}),
+                 key: token || "anonymous"
                 })
              ),
-            m("aside.top",
-              m("h2",
-                m(Title, {doc: vnode.state.doc}),
-                (!token)?null:
-                m("button.btn.btn-link",
-                  {onclick: show_edit},
-                  m("i.icon.icon-edit")))
-             ),
             [
+             ["aside.top", registry.top_widgets],
              ["aside.bottom", registry.bottom_widgets],
              ["aside.left", registry.left_widgets],
              ["aside.right", registry.right_widgets]
@@ -190,6 +153,7 @@ const View = {
                     (widget) =>
                     m(widget,
                       {patch: (token)?patch:undefined,
+                       edit: (token)?show_edit:null,
                        path: vnode.attrs.path,
                        doc:vnode.state.doc})))
             )
@@ -202,13 +166,13 @@ export const routes = {
 };
 
 export const links = [{url: "/view/home.txt", name: "Home"}];
-export const actions = [Action];
 
 export const registry = {
     editor_widgets: [],
+    top_widgets: [],
+    bottom_widgets: [],
     left_widgets: [],
     right_widgets: [],
-    bottom_widgets: []
 };
 
 export const Title = {

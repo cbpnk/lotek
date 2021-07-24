@@ -192,5 +192,5 @@ export const categories = {
 export function get_token() {
     let token = localStorage.getItem('token');
     if (token)
-        return `Bearer ${token}`;
+        return token;
 }
