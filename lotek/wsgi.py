@@ -216,6 +216,24 @@ def txt_file(request, path):
 
 def media_file(request, filename):
     repo = config.repo
+    if request.method == 'OPEN':
+        from subprocess import run
+        run(
+            ["dbus-send",
+             "--session",
+             "--type=method_call",
+             "--dest=org.freedesktop.FileManager1",
+             "/org/freedesktop/FileManager1",
+             "org.freedesktop.FileManager1.ShowItems",
+             "array:string:file://" + os.path.abspath(repo.file_path(filename)),
+             "string:"
+             ],
+            check=True)
+        return json_response("OK")
+
+    if request.method != 'GET':
+        return method_not_allowed()
+
     commit = repo.get_latest_commit()
     basename, ext = os.path.splitext(filename)
     ext = ext[1:]

@@ -120,9 +120,7 @@ class GitRepo:
 
     def import_file(self, filename, source, mode=None):
         from shutil import copyfile, copyfileobj
-        basedir = self.repo.controldir()
-
-        fullname = os.path.join(basedir, 'media', filename)
+        fullname = self.file_path(filename)
         dirname = os.path.dirname(fullname)
         os.makedirs(dirname, exist_ok=True)
 
@@ -148,5 +146,8 @@ class GitRepo:
         os.chmod(fullname, 0o444)
 
     def open_file(self, filename):
+        return open(self.file_path(filename), 'rb')
+
+    def file_path(self, filename):
         basedir = self.repo.controldir()
-        return open(os.path.join(basedir, 'media', filename), 'rb')
+        return os.path.join(basedir, 'media', filename)
