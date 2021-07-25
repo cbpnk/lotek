@@ -255,19 +255,22 @@ const MilestoneForm = {
         }
 
         function end() {
-            vnode.attrs.patch(
-                [{op: "add", path: "/end_d", value: [get_datestring()]}]
-            );
+            const datestring = get_datestring();
+            let patch = [{op: "add", path: "/end_d", value: [datestring]}];
+            if (!started) {
+                patch.push({op: "add", path: "/start_d", value: [datestring]});
+            }
+            vnode.attrs.patch(patch);
         }
 
         return [
             m("dl.text-small",
               m("dt", "Start Date"),
               m("dd",
-                started?doc.start_d[0]:vnode.state.patch?m("button.btn.btn-sm.btn-primary", {onclick: start}, "Start"):"N/A"),
+                started?doc.start_d[0]:vnode.attrs.patch?m("button.btn.btn-sm.btn-primary", {onclick: start}, "Start"):"N/A"),
               m("dt", "End Date"),
               m("dd",
-                ended?doc.end_d[0]:vnode.state.patch?m("button.btn.btn-sm.btn-primary", {onclick: end}, "End"):"N/A"),
+                ended?doc.end_d[0]:vnode.attrs.patch?m("button.btn.btn-sm.btn-primary", {onclick: end}, "End"):"N/A"),
               m("dt", "Project"),
               m("dd",
                 m(AutoCompleteInput,
@@ -331,15 +334,24 @@ const CardForm = {
         }
 
         function start() {
-            vnode.attrs.patch(
-                [{op: "add", path: "/start_d", value: [get_datestring()]}]
-            );
+            const datestring = get_datestring();
+            let patch = [{op: "add", path: "/start_d", value: [datestring]}];
+            if (!scheduled) {
+                patch.push({op: "add", path: "/schedule_d", value: [datestring]});
+            }
+            vnode.attrs.patch(patch);
         }
 
         function end() {
-            vnode.attrs.patch(
-                [{op: "add", path: "/end_d", value: [get_datestring()]}]
-            );
+            const datestring = get_datestring();
+            let patch = [{op: "add", path: "/end_d", value: [datestring]}];
+            if (!started) {
+                patch.push({op: "add", path: "/start_d", value: [datestring]});
+            }
+            if (!scheduled) {
+                patch.push({op: "add", path: "/schedule_d", value: [datestring]});
+            }
+            vnode.attrs.patch(patch);
         }
 
         return [
