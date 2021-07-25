@@ -75,7 +75,7 @@ def static_file(request, name):
         sendfile(response, f, filename)
     return response
 
-def _search(repo, commit, q, highlight):
+def _search(q, highlight):
     highlighter = None
     if highlight:
         from whoosh.highlight import Highlighter, HtmlFormatter
@@ -86,10 +86,8 @@ def _search(repo, commit, q, highlight):
             terms=True if highlight else False,
             highlighter=highlighter):
         d = dict(hit.fields())
-        obj = repo.get_object(commit, d["path"])
-        metadata = config.parser.parse(repo.get_data(obj).decode())
         if highlight:
-            d["excerpts"] = hit.highlights("content", text=metadata["content"])
+            d["excerpts"] = hit.highlights("content")
         yield d
 
 
@@ -101,7 +99,7 @@ def search(request):
         q = request.form.get("q", "")
         highlight = request.form.get("highlight", "")
         if q:
-            return json_response([d for d in _search(config.repo, commit, q, highlight)])
+            return json_response([d for d in _search(q, highlight)])
         return json_response([])
 
 def get_repo_file(request, commit, filename):

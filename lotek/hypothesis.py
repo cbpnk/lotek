@@ -225,13 +225,14 @@ def normalize_annotation(payload, id, prefix):
         "update": [payload["user"]],
         "delete": [payload["user"]]
     }
-    payload["id"] = id
+    payload["id"] = id.replace("/", "-")
 
 def get_row(hit, repo, commit, prefix):
-    obj = repo.get_object(commit, hit["path"])
+    path = hit["path"].split("#annotations:", 1)[1].replace("-", "/")+".h.json"
+    obj = repo.get_object(commit, path)
     data = repo.get_data(obj)
     payload = json.loads(data)
-    normalize_annotation(payload, hit["path"][:-7], prefix)
+    normalize_annotation(payload, path[:-7], prefix)
     return payload
 
 def api_search(request):
@@ -239,7 +240,7 @@ def api_search(request):
 
     scheme = request.environ["wsgi.url_scheme"]
     host = request.environ["HTTP_HOST"]
-    prefix = f"{scheme}://{host}/"
+    prefix = f"{scheme}://{host}/files/"
 
     qs = parse_qs(request.environ["QUERY_STRING"])
 
@@ -252,7 +253,7 @@ def api_search(request):
         q.append(Term("uri_i", link))
     q = And([
         Or(q),
-        Wildcard("path", "*.h.json"),
+        Term("category_i", "annotation"),
         Term("group_i", qs["group"][0])
     ])
     commit = repo.get_latest_commit()
@@ -290,10 +291,10 @@ def clean_annotation(payload, prefix):
     del payload["permissions"]
 
 
-def api_annotations(request):
+def api_annotation_create(request):
     scheme = request.environ["wsgi.url_scheme"]
     host = request.environ["HTTP_HOST"]
-    prefix = f"{scheme}://{host}/"
+    prefix = f"{scheme}://{host}/files/"
 
     payload = json.loads(request.stream.read(request.content_length))
     clean_annotation(payload, prefix)
@@ -315,12 +316,12 @@ def api_annotations(request):
     normalize_annotation(payload, filename[:-7], prefix)
     return json_response(payload)
 
-def api_annotation_update(request, id):
+def api_annotation(request, id):
+    filename = id.replace("-", "/") + ".h.json"
     if request.method in ("PUT", "PATCH"):
-        filename = f'{id}.h.json'
         scheme = request.environ["wsgi.url_scheme"]
         host = request.environ["HTTP_HOST"]
-        prefix = f"{scheme}://{host}/"
+        prefix = f"{scheme}://{host}/files/"
 
         payload = json.loads(request.stream.read(request.content_length))
         clean_annotation(payload, prefix)
@@ -352,6 +353,6 @@ hypothesis_urls = [
     ("api/groups", api_groups),
     ("api/profile", api_profile),
     ("api/profile/groups", api_profile_groups),
-    ("api/annotations/{id:any}", api_annotation_update),
-    ("api/annotations", api_annotations),
+    ("api/annotations/{id}", api_annotation),
+    ("api/annotations", api_annotation_create),
 ]

@@ -44,7 +44,7 @@ def run_indexer():
     from .config import config
     from whoosh.index import open_dir, create_in, EmptyIndexError, LockError
     from markdown import Markdown
-    from datetime import datetime
+    from datetime import datetime, timezone
     import json
 
     INDEX_ROOT = config._config.INDEX_ROOT
@@ -63,7 +63,7 @@ def run_indexer():
         from whoosh.fields import Schema, ID, NUMERIC, DATETIME
         schema = Schema(
             path=ID(unique=True, stored=True),
-            content=NGRAMCJKTEXT(),
+            content=NGRAMCJKTEXT(stored=True),
             link=ID(stored=True))
         schema.add("*_i", ID(stored=True), glob=True)
         schema.add("*_t", NGRAMCJKTEXT(stored=True), glob=True)
@@ -90,15 +90,19 @@ def run_indexer():
 
                 if path.endswith(".h.json"):
                     annotation = json.loads(content)
-                    date = datetime.fromisoformat(annotation["created"])
+                    date = datetime.fromisoformat(annotation["created"]).astimezone(timezone.utc)
                     func = writer.add_document if is_new else writer.update_document
+                    basepath = annotation["uri"][1:] + "#annotations:"
+                    annotation_id = path[:-7].replace("/", "-")
+
                     func(
-                        path=path,
+                        path=basepath + annotation_id,
                         content=annotation["text"],
+                        category_i=["annotation"],
                         group_i=[annotation["group"]],
                         created_d=[date],
                         tag_t=annotation["tags"],
-                        reference_i=[f"{r}.h.json" for r in annotation.get("references", [])],
+                        reference_i=[basepath+r for r in annotation.get("references", [])],
                         uri_i=[annotation["uri"]]+[link["href"] for link in annotation.get("document", {}).get("link", [])]
                     )
                 else:

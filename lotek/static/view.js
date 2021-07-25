@@ -187,9 +187,16 @@ export const Title = {
 
 export const Link = {
     view: function (vnode) {
+        const path = vnode.attrs.doc.path;
+        if (path.includes("#")) {
+            return m("a",
+                     {href: '/files/' + path,
+                      "class": vnode.attrs.class},
+                     (vnode.attrs.doc.title_t || [path])[0]);
+        }
         return m(m.route.Link,
-                 {href: m.buildPathname("/view/:path...", {path: vnode.attrs.doc.path}),
+                 {href: m.buildPathname("/view/:path...", {path: path}),
                   "class": vnode.attrs.class},
-                 (vnode.attrs.doc.title_t || ["Untitled"])[0]);
+                 (vnode.attrs.doc.title_t || [path])[0]);
     }
 }

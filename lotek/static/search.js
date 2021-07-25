@@ -43,7 +43,7 @@ const Search = {
                      (result) =>
                      m("div.card.my-1",
                        m("div.card-header",
-                         m("div.card-title.h4",
+                         m("div.card-title.h4.text-ellipsis",
                            m(Link, {key: result.path, doc: result})),
                          m("div.card-subtitle", result.path)),
                        m("div.card-body",
