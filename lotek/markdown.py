@@ -96,13 +96,13 @@ class MarkdownParser:
         md = self._md()
         return d, md.convert(d["content"])
 
-    def wikilinks(self, content):
-        md = self._md()
-        md.convert(content)
-        return md.wikilinks
-
     def format(self, metadata):
         body = metadata.pop("content", "")
+        md = self._md()
+        md.convert(body)
+        links = list(md.wikilinks)
+        links.sort()
+        metadata["link_i"] = links
         return ''.join(
             ''.join(f'{key}: {value}\n' for value in sorted(metadata[key]))
             for key in sorted(metadata)).encode() + b'\n' + body.encode()

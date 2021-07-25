@@ -63,8 +63,7 @@ def run_indexer():
         from whoosh.fields import Schema, ID, NUMERIC, DATETIME
         schema = Schema(
             path=ID(unique=True, stored=True),
-            content=NGRAMCJKTEXT(stored=True),
-            link=ID(stored=True))
+            content=NGRAMCJKTEXT(stored=True))
         schema.add("*_i", ID(stored=True), glob=True)
         schema.add("*_t", NGRAMCJKTEXT(stored=True), glob=True)
         schema.add("*_n", NUMERIC(stored=True), glob=True)
@@ -107,11 +106,8 @@ def run_indexer():
                     )
                 else:
                     metadata = parser.parse(content)
-                    wikilinks = parser.wikilinks(metadata["content"])
-                    link=list(wikilinks)
-                    link.sort()
                     func = writer.add_document if is_new else writer.update_document
-                    func(path=path, link=link, **metadata)
+                    func(path=path, **metadata)
 
             repo.update_indexed_commit(indexed_commit, head)
 
