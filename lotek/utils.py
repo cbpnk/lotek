@@ -97,3 +97,35 @@ def import_file(source_filename, f, mode=None, **kwargs):
 def run_import(source_filename, mode):
     with open(source_filename, 'rb') as f:
         print(import_file(source_filename, f, mode))
+
+
+def index_file(path, add_document):
+    from .config import config
+    from io import StringIO
+    from pdfminer.pdfpage import PDFPage
+    from pdfminer.converter import TextConverter
+    from pdfminer.layout import LAParams
+    from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter
+
+
+    if not path.endswith(".pdf"):
+        return
+
+    rsrcmgr = PDFResourceManager()
+    laparams = LAParams()
+
+    with config.repo.open_file(path) as f:
+        for i, page in enumerate(PDFPage.get_pages(f)):
+            pagenum = i+1
+
+            buf = StringIO()
+            device = TextConverter(rsrcmgr, buf, laparams=laparams)
+            interpreter = PDFPageInterpreter(rsrcmgr, device)
+            interpreter.process_page(page)
+            text = buf.getvalue().strip()
+
+            if text:
+                add_document(
+                    path=f"{path}#page={pagenum}",
+                    content=text,
+                    category_i=["pdf-page"])

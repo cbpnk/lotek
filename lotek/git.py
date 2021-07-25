@@ -142,3 +142,7 @@ class GitRepo:
                 copyfileobj(source, f)
 
         os.chmod(fullname, 0o444)
+
+    def open_file(self, filename):
+        basedir = self.repo.controldir()
+        return open(os.path.join(basedir, 'media', filename), 'rb')

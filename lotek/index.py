@@ -108,6 +108,9 @@ def run_indexer():
                     metadata = parser.parse(content)
                     func = writer.add_document if is_new else writer.update_document
                     func(path=path, **metadata)
+                    if is_new and not path.endswith(".txt"):
+                        from .utils import index_file
+                        index_file(path, func)
 
             repo.update_indexed_commit(indexed_commit, head)
 
