@@ -104,13 +104,14 @@ def run_indexer():
                         reference_i=[basepath+r for r in annotation.get("references", [])],
                         uri_i=[annotation["uri"]]+[link["href"] for link in annotation.get("document", {}).get("link", [])]
                     )
-                else:
+                elif path.endswith(".txt"):
                     metadata = parser.parse(content)
                     func = writer.add_document if is_new else writer.update_document
                     func(path=path, **metadata)
-                    if is_new and not path.endswith(".txt"):
+                else:
+                    if is_new:
                         from .utils import index_file
-                        index_file(path, func)
+                        index_file(path, writer.add_document)
 
             repo.update_indexed_commit(indexed_commit, head)
 

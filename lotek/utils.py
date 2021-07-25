@@ -17,13 +17,12 @@ def create_new_txt(filename, metadata, message=None, author=None, **kwargs):
         if repo.replace_content(commit, filename, parser.format(metadata), message, author, **kwargs):
             break
 
-    if filename.endswith(".txt"):
-        meta = config.editor.create_new_file(filename, metadata)
-        if meta:
-            while True:
-                commit = repo.get_latest_commit()
-                if repo.replace_content(commit, filename, parser.format(meta), f"Setup: {filename}"):
-                    break
+    meta = config.editor.create_new_file(filename, metadata)
+    if meta:
+        while True:
+            commit = repo.get_latest_commit()
+            if repo.replace_content(commit, filename, parser.format(meta), f"Setup: {filename}"):
+                break
 
     run_indexer()
     return True
@@ -62,6 +61,7 @@ def import_file(source_filename, f, mode=None, **kwargs):
     ext = os.path.splitext(source_filename)[1]
     hexdigest = hash_file(f)
     filename = f'{hexdigest[0:3]}/{hexdigest[3:6]}/{hexdigest[6:]}{ext}'
+    txtname = f'{hexdigest[0:3]}/{hexdigest[3:6]}/{hexdigest[6:]}.txt'
 
     repo = config.repo
     f.seek(0)
@@ -90,8 +90,8 @@ def import_file(source_filename, f, mode=None, **kwargs):
     for k, v in metadata.items():
         print(f"{k}: {v}")
 
-    create_new_txt(filename, meta, f"Import {filename}", **kwargs)
-    return filename
+    create_new_txt(txtname, meta, f"Import {filename}", mediafile=filename, **kwargs)
+    return txtname
 
 
 def run_import(source_filename, mode):

@@ -1,18 +1,20 @@
 const PDFForm = {
     view: function(vnode) {
-        return m(
-            "dl.text-small",
-            [["Author", "author_t"],
-             ["Keyword", "keyword_t"]].map(
-                 ([name, key]) =>
-                 [m("dt", name),
-                  (vnode.attrs.doc[key] || []).map(
-                      (item) =>
-                      m("dd.ml-2", item)
-                  )
-                 ]
+        return [
+            m("a[target='_new']", {href: `/files/${vnode.attrs.path.slice(0,-4)}.pdf`}, "Open"),
+            m("dl.text-small",
+              [["Author", "author_t"],
+               ["Keyword", "keyword_t"]].map(
+                   ([name, key]) =>
+                   [m("dt", name),
+                    (vnode.attrs.doc[key] || []).map(
+                        (item) =>
+                        m("dd.ml-2", item)
+                    )
+                   ]
+               )
              )
-        );
+        ];
     }
 }
 

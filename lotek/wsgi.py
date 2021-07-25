@@ -37,9 +37,9 @@ engine.global_vars.update({'e': escape})
 
 STATIC_ROOT = os.path.join(os.path.dirname(__file__), 'static')
 
-def sendfile(response, f, filename):
+def sendfile(response, f):
     if uwsgi:
-        response.headers.append(("X-Sendfile", os.path.abspath(filename)))
+        response.headers.append(("X-Sendfile", os.path.abspath(f.name)))
     else:
         response.write_bytes(f.read())
 
@@ -56,7 +56,7 @@ def vendor_file(request, name):
     response = HTTPResponse(content_type=guess_type(name)[0] or "application/octet-stream")
 
     with f:
-        sendfile(response, f, filename)
+        sendfile(response, f)
     return response
 
 def static_file(request, name):
@@ -72,7 +72,7 @@ def static_file(request, name):
 
     response = HTTPResponse(content_type=guess_type(name)[0])
     with f:
-        sendfile(response, f, filename)
+        sendfile(response, f)
     return response
 
 def _search(q, highlight):
@@ -102,61 +102,39 @@ def search(request):
             return json_response([d for d in _search(q, highlight)])
         return json_response([])
 
-def get_repo_file(request, commit, filename):
+def get_txt_file(request, commit, filename):
     obj = config.repo.get_object(commit, filename)
     if obj is None:
         return not_found()
     content = config.repo.get_data(obj)
 
-    ext = os.path.splitext(filename)[1][1:]
-    content_type = guess_type(filename)[0] or "application/octet-stream"
-
-    if ext != 'txt':
-        fullname = os.path.join(config._config.REPO_ROOT, 'media', filename)
-        try:
-            f = open(fullname, 'rb')
-        except FileNotFoundError:
-            return not_found()
-    else:
-        f = nullcontext()
-
-    with f:
-        accept_header = request.environ.get('HTTP_ACCEPT', 'text/html')
-        for mime_type in accept_header.split(","):
-            mime_type = mime_type.strip().split(";", 1)[0]
-            if mime_type == 'application/json':
-                response = json_response(config.parser.parse(content.decode()))
-                response.headers.append(("Vary", "Accept"))
-                response.headers.append(("ETag", obj.decode()))
-                return response
-            elif mime_type == 'text/html':
-                metadata, html = config.parser.convert(content.decode())
-                title = metadata.get("title_t", ["Untitled"])[0]
-                response = HTTPResponse(content_type='text/html; charset=utf-8')
-                response.headers.append(("Vary", "Accept"))
-                template = engine.get_template(f'{ext}.html')
-                response.write_bytes(template.render({"title": title, "html": html}).encode())
-                return response
-            elif mime_type in (content_type, '*/*'):
-                if content_type == 'text/plain':
-                    response = HTTPResponse(content_type='text/plain; charset=utf-8')
-                    response.headers.append(("Vary", "Accept"))
-                    response.headers.append(("ETag", obj.decode()))
-                    response.write_bytes(content)
-                    return response
-                metadata = config.parser.parse(content.decode())
-                response = HTTPResponse(content_type=content_type)
-                title = metadata.get("title_t", [None])[0]
-                response.headers.append(("Vary", "Accept"))
-                if title:
-                    response.headers.append(("Content-Disposition", "attachment; filename="+quote(title)))
-                sendfile(response, f, fullname)
-                return response
-
+    accept_header = request.environ.get('HTTP_ACCEPT', 'text/html')
+    for mime_type in accept_header.split(","):
+        mime_type = mime_type.strip().split(";", 1)[0]
+        if mime_type == 'application/json':
+            response = json_response(config.parser.parse(content.decode()))
+            response.headers.append(("Vary", "Accept"))
+            response.headers.append(("ETag", obj.decode()))
+            return response
+        elif mime_type == 'text/html':
+            metadata, html = config.parser.convert(content.decode())
+            title = metadata.get("title_t", ["Untitled"])[0]
+            response = HTTPResponse(content_type='text/html; charset=utf-8')
+            response.headers.append(("Vary", "Accept"))
+            template = engine.get_template(f'txt.html')
+            response.write_bytes(template.render({"title": title, "html": html}).encode())
+            return response
+        elif mime_type in ('text/plain', '*/*'):
+            response = HTTPResponse(content_type='text/plain; charset=utf-8')
+            response.headers.append(("Vary", "Accept"))
+            response.headers.append(("ETag", obj.decode()))
+            response.write_bytes(content)
+            return response
         return http_error(406)
 
 
-def repo_file(request, filename):
+def txt_file(request, path):
+    filename = path + ".txt"
     if os.path.basename(filename).startswith("."):
         return not_found()
 
@@ -164,7 +142,7 @@ def repo_file(request, filename):
 
     if request.method == 'GET':
         commit = repo.get_latest_commit()
-        return get_repo_file(request, commit, filename)
+        return get_txt_file(request, commit, filename)
 
     parser = config.parser
     token = request.environ.get("HTTP_AUTHORIZATION", '')
@@ -203,7 +181,7 @@ def repo_file(request, filename):
                 spawn_indexer()
                 break
 
-        return get_repo_file(request, commit, filename)
+        return get_txt_file(request, commit, filename)
 
     elif request.method == 'PATCH':
         date = parsedate_to_datetime(request.environ['HTTP_X_LOTEK_DATE'])
@@ -231,9 +209,49 @@ def repo_file(request, filename):
                 spawn_indexer()
                 break
 
-        return get_repo_file(request, new_commit, filename)
+        return get_txt_file(request, new_commit, filename)
     else:
         return method_not_allowed()
+
+
+def media_file(request, filename):
+    repo = config.repo
+    commit = repo.get_latest_commit()
+    basename, ext = os.path.splitext(filename)
+    ext = ext[1:]
+    obj = repo.get_object(commit, basename+".txt")
+    if obj is None:
+        return not_found()
+    content = repo.get_data(obj)
+    metadata = config.parser.parse(content.decode())
+    title = metadata.get("title_t", [None])[0]
+
+    content_type = guess_type(filename)[0] or "application/octet-stream"
+
+    try:
+        f = repo.open_file(filename)
+    except FileNotFoundError:
+        return not_found()
+
+    with f:
+        accept_header = request.environ.get('HTTP_ACCEPT', 'text/html')
+        for mime_type in accept_header.split(","):
+            mime_type = mime_type.strip().split(";", 1)[0]
+            if mime_type == 'text/html':
+                response = HTTPResponse(content_type='text/html; charset=utf-8')
+                response.headers.append(("Vary", "Accept"))
+                template = engine.get_template(f'{ext}.html')
+                response.write_bytes(template.render({"title": title +"." + ext if title else filename}).encode())
+                return response
+            elif mime_type in (content_type, '*/*'):
+                response = HTTPResponse(content_type=content_type)
+                response.headers.append(("Vary", "Accept"))
+                if title:
+                    response.headers.append(("Content-Disposition", "attachment; filename="+quote(title + "." + ext)))
+                sendfile(response, f)
+                return response
+
+        return http_error(406)
 
 
 def upload_file(request):
@@ -298,7 +316,8 @@ def router_middleware(options):
 urls = [
     ("/static/vendor/{name:any}", vendor_file),
     ("/static/{name:any}", static_file),
-    ("/files/{filename:any}", repo_file),
+    ("/files/{path:any}.txt", txt_file),
+    ("/files/{filename:any}", media_file),
     ("/files/", upload_file),
     ("/search/", search),
     ("/hypothesis/", hypothesis_urls),
