@@ -201,11 +201,13 @@ def api_profile(request):
         return unauthorized()
     host = request.environ['HTTP_HOST']
     response = HTTPResponse(content_type='application/json')
+    email = token[7:]
     response.write(json.dumps(
         {"authority": host,
          "features": {},
          "preferences": {},
-         "userid": f"acct:{token[7:]}"
+         "userid": f"acct:{email}",
+         "user_info": {"display_name": get_name(email)}
         }))
     return response
 
@@ -226,6 +228,8 @@ def normalize_annotation(payload, id, prefix):
         "delete": [payload["user"]]
     }
     payload["id"] = id.replace("/", "-")
+    email = payload["user"][5:]
+    payload["user_info"] = {"display_name":  get_name(email)}
 
 def get_row(hit, repo, commit, prefix):
     path = hit["path"].split("#annotations:", 1)[1].replace("-", "/")+".h.json"

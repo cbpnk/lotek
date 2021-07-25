@@ -81,4 +81,4 @@ def get_name(email):
     filename = f"users/{domain}/{username}.txt"
     obj = repo.get_object(commit, filename)
     metadata = parser.parse(repo.get_data(obj).decode())
-    return metadata.get("title_t", [False])[0]
+    return metadata.get("title_t", [None])[0]
