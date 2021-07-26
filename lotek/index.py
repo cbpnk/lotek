@@ -105,7 +105,7 @@ def run_indexer():
                         uri_i=[annotation["uri"]]+[link["href"] for link in annotation.get("document", {}).get("link", [])]
                     )
                 elif path.endswith(".txt"):
-                    metadata = parser.parse(content)
+                    metadata, html = parser.convert(content)
                     func = writer.add_document if is_new else writer.update_document
                     func(path=path, **metadata)
                 else:

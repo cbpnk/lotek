@@ -112,7 +112,8 @@ def get_txt_file(request, commit, filename):
     for mime_type in accept_header.split(","):
         mime_type = mime_type.strip().split(";", 1)[0]
         if mime_type == 'application/json':
-            response = json_response(config.parser.parse(content.decode()))
+            metadata, html = config.parser.convert(content.decode())
+            response = json_response(metadata)
             response.headers.append(("Vary", "Accept"))
             response.headers.append(("ETag", obj.decode()))
             return response
