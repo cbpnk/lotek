@@ -64,6 +64,6 @@ if sys.modules['__main__'].__package__ == __package__:
 else:
     try:
         import uwsgi
-        config = load_config(None)
+        config = load_config(os.environ.get('LOTEK_CONFIG', None))
     except ImportError:
         config = load_config(sys.modules['__main__'].__file__)
