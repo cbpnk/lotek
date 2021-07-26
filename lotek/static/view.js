@@ -85,8 +85,10 @@ const View = {
                 }
             ).then(
                 function (result) {
+                    vnode.state.doc = result.response;
+                    vnode.state.etag = result.etag;
                     vnode.state.edit = false;
-                    m.route.set(m.buildPathname("/view/:path...", {path: vnode.attrs.path}));
+                    m.redraw();
                 },
                 function (error) {
                     console.log(error);

@@ -11,7 +11,13 @@ const Editor = {
                   m("div.column.col-3", m("label.form-label", "Revision")),
                   m("div.column", m("label.form-label", (vnode.attrs.doc.revision_n || [0])[0])),
                   m("div",
-                    m("button.btn.btn-primary", {onclick}, "Save")
+                    m("button.btn.btn-primary", {onclick}, "Save"),
+                    m("button.btn",
+                      {onclick: function(event) {
+                          event.preventDefault();
+                          vnode.attrs.hide();
+                      }},
+                      "Cancel")
                    )
                  )
                )

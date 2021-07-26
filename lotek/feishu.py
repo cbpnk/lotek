@@ -43,10 +43,12 @@ def table_cell_to_markdown(blocks, editor_url):
             yield from rich_elements_to_markdown(paragraph["elements"], editor_url)
 
 def callout_blocks_to_markdown(blocks, editor_url):
+    prev_list_type = None
     for block in blocks or []:
         if block["type"] == "paragraph":
             paragraph = block["paragraph"]
-            yield from paragraph_style_to_markdown(paragraph.get('style', {}), indent=4)
+            yield from paragraph_style_to_markdown(prev_list_type, paragraph.get('style', {}), indent=4)
+            prev_list_type = paragraph.get('style', {}).get('list', {}).get('type', None)
             yield from rich_elements_to_markdown(paragraph["elements"], editor_url)
             yield '\n'
 
@@ -116,23 +118,23 @@ def rich_elements_to_markdown(elements, editor_url):
             yield equation["equation"]
             yield '$'
 
-def paragraph_style_to_markdown(style, indent=0):
+def paragraph_style_to_markdown(prev_list_type, style, indent=0):
     h = style.get("headingLevel", None)
     list = style.get("list", None)
 
     if list is not None:
         if prev_list_type != list["type"]:
             yield '\n'
-            yield ' '*indent
-            yield INDENT * (list['indentLevel'] - 1)
-            if list["type"] == 'number':
-                yield '1. '
-            elif list["type"] == 'bullet':
-                yield '* '
-            elif list["type"] == "checkBox":
-                yield '- [ ] '
-            elif list["type"] == "checkedBox":
-                yield '- [X] '
+        yield ' '*indent
+        yield INDENT * (list['indentLevel'] - 1)
+        if list["type"] == 'number':
+            yield '1. '
+        elif list["type"] == 'bullet':
+            yield '* '
+        elif list["type"] == "checkBox":
+            yield '- [ ] '
+        elif list["type"] == "checkedBox":
+            yield '- [X] '
     else:
         yield '\n'
         yield ' '*indent
@@ -144,13 +146,14 @@ def paragraph_style_to_markdown(style, indent=0):
 
 def to_markdown(content, editor_url):
     prev_list_type = None
-
     for block in content["body"]["blocks"]:
         if block["type"] == "paragraph":
             paragraph = block["paragraph"]
-            yield from paragraph_style_to_markdown(paragraph.get('style', {}))
+            yield from paragraph_style_to_markdown(prev_list_type, paragraph.get('style', {}))
+            prev_list_type = paragraph.get('style', {}).get('list', {}).get('type', None)
             yield from rich_elements_to_markdown(paragraph["elements"], editor_url)
             yield '\n'
+            continue
         elif block["type"] == "horizontalLine":
             yield '-----\n'
         elif block["type"] == "code":
@@ -202,11 +205,13 @@ def to_markdown(content, editor_url):
                 yield ' | '.join(' ' * table["columnSize"])
                 yield ' |\n'
 
+        prev_list_type = None
+
 
 class FeishuTenant:
 
     def __init__(self, config):
-        self.url = config.EDITOR_URL
+        self.url = config.FEISHU_URL
         self.app_id = config.FEISHU_APP_ID
         self.app_secret = config.FEISHU_APP_SECRET
         self.folder_token = config.FEISHU_FOLDER_TOKEN
