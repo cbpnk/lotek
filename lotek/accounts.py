@@ -5,7 +5,8 @@ from .utils import create_new_txt
 
 def mkpasswd(plaintext, crypted=None):
     from crypt import crypt, mksalt, METHOD_BLOWFISH
-    return crypt(plaintext, crypted or mksalt(METHOD_BLOWFISH))
+    method = getattr(config._config, 'CRYPT_METHOD', METHOD_BLOWFISH)
+    return crypt(plaintext, crypted or mksalt(method))
 
 def replace_passwd(username, domain, password, **kwargs):
     passwd = mkpasswd(password)
