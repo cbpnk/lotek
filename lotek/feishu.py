@@ -84,15 +84,15 @@ def rich_elements_to_markdown(elements, editor_url):
                 yield "*"
                 yield escape(textRun['text'])
                 yield "*"
-            elif style.get("itatic", False):
-                yield "**"
+            elif style.get("italic", False):
+                yield "_"
                 yield escape(textRun['text'])
-                yield "**"
+                yield "_"
             elif style.get("strikeThrough", False):
                 yield "~~"
                 yield escape(textRun['text'])
                 yield "~~"
-            elif style.get("underline", False):
+            elif style.get("underLine", False):
                 yield "^^"
                 yield escape(textRun['text'])
                 yield "^^"
@@ -176,9 +176,10 @@ def to_markdown(content, editor_url):
             if text_color:
                 style += f'color:{text_color};'
             zoneid = callout['zoneId']
+            yield '\n'
             if style:
                 yield f'<style>.{zoneid} {{ {style} }}</style>\n'
-            yield f'\n!!! callout {zoneid} ":'
+            yield f'!!! callout {zoneid} ":'
             yield callout["calloutEmojiId"]
             yield ':"'
 
