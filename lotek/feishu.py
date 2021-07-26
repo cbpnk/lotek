@@ -1,5 +1,6 @@
 from urllib.request import urlopen, Request
 from urllib.parse import unquote
+from functools import reduce
 import json
 import re
 
@@ -13,7 +14,7 @@ def escape(text):
     return text.translate(TABLE)
 
 def escape_code(code):
-    n = max(map(len, re.findall(r'`+', code))) + 1
+    n = reduce(max, map(len, re.findall(r'`+', code)), 0) + 1
     if code.startswith("`"):
         code = ' ' + code
     if code.endswith("`"):
@@ -155,10 +156,10 @@ def to_markdown(content, editor_url):
             yield '\n'
             continue
         elif block["type"] == "horizontalLine":
-            yield '-----\n'
+            yield '\n-----\n'
         elif block["type"] == "code":
             code = block["code"]
-            yield '    :::'
+            yield '\n    :::'
             yield code["language"].lower()
             yield '\n'
             yield from code_blocks_to_markdown(code["body"]["blocks"])
@@ -177,7 +178,7 @@ def to_markdown(content, editor_url):
             zoneid = callout['zoneId']
             if style:
                 yield f'<style>.{zoneid} {{ {style} }}</style>\n'
-            yield f'!!! callout {zoneid} ":'
+            yield f'\n!!! callout {zoneid} ":'
             yield callout["calloutEmojiId"]
             yield ':"'
 
@@ -185,7 +186,7 @@ def to_markdown(content, editor_url):
 
         elif block["type"] == "table":
             table = block["table"]
-            yield '| '
+            yield '\n| '
             yield ' | '.join(
                 ''.join(table_cell_to_markdown(cell["body"]["blocks"], editor_url))
                 for cell in table["tableRows"][0]["tableCells"])
