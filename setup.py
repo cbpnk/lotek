@@ -18,8 +18,7 @@ setup(
 
     packages = find_packages(),
     package_data = {
-      'lotek.templates': ['*.html'],
-      'lotek.static': ['*.html', '*.js', '*.css'],
+      'lotek': ['templates/*.html', 'static/*.html', 'static/*.js', 'static/*.css']
     },
     entry_points={
         'lotek_editors':
