@@ -10,7 +10,8 @@ const Widget = {
                query: "category_i:tag",
                attribute: "tag_i",
                patch: vnode.attrs.patch,
-               addon: "Tag"
+               addon: "Tag",
+               popover: "popover-left",
               }
              )
         ];

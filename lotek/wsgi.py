@@ -1,24 +1,23 @@
 import os
 from wheezy.routing import PathRouter
-from wheezy.http import WSGIApplication, bootstrap_http_defaults, HTTPResponse, not_found, unauthorized, method_not_allowed, json_response, http_error
+from wheezy.http import WSGIApplication, bootstrap_http_defaults, HTTPResponse, not_found, redirect, unauthorized, method_not_allowed, json_response, http_error
 from wheezy.template.engine import Engine
 from wheezy.template.ext.core import CoreExtension
 from wheezy.template.ext.code import CodeExtension
 from wheezy.template.loader import FileLoader, autoreload
 from html import escape
 from mimetypes import guess_type
-from email.utils import parsedate_to_datetime, formataddr
+from email.utils import parsedate_to_datetime, formataddr, parseaddr
 import jsonpatch
 import json
 from urllib.request import urlretrieve
 from urllib.parse import quote
-from contextlib import nullcontext
 from shutil import move
 from warnings import catch_warnings
 from .config import config
 from .hypothesis import hypothesis_urls
 from .index import spawn_indexer
-from .accounts import check_passwd, replace_passwd, get_name
+from .accounts import check_passwd, replace_passwd, get_name, get_names
 from .utils import create_new_txt, import_file
 
 try:
@@ -44,7 +43,7 @@ def sendfile(response, f):
         response.write_bytes(f.read())
 
 def vendor_file(request, name):
-    filename = os.path.join(config.STATIC_ROOT, name)
+    filename = os.path.join(config.CACHE_ROOT, name)
     try:
         f = open(filename, 'rb')
     except FileNotFoundError:
@@ -84,6 +83,7 @@ def _search(q, highlight):
     for hit in config.index.search(
             q,
             terms=True if highlight else False,
+            limit=None,
             highlighter=highlighter):
         d = dict(hit.fields())
         if highlight:
@@ -321,6 +321,94 @@ def change_password(request):
         return json_response(email)
     return method_not_allowed()
 
+
+def annotation_redirect(request, path):
+    if request.method != 'GET':
+        return method_not_allowed()
+    scheme = request.environ["wsgi.url_scheme"]
+    host = request.environ["HTTP_HOST"]
+    prefix = f"{scheme}://{host}/files/"
+
+    repo = config.repo
+    commit = repo.get_latest_commit()
+    if commit is None:
+        return not_found()
+    obj = repo.get_object(commit, path + ".h.json")
+    if obj is None:
+        return not_found()
+    data = repo.get_data(obj)
+    payload = json.loads(data)
+    return redirect(prefix + payload["uri"][1:] + "#annotations:" + path.replace("/", "-"))
+
+def get_link(repo, commit, path):
+    if os.path.basename(path).startswith("."):
+        return
+    if path.endswith(".h.json"):
+        obj = repo.get_object(commit, path)
+        if obj is None:
+            return
+        data = repo.get_data(obj)
+        payload = json.loads(data)
+        return payload["uri"][1:] + "#annotations:" + path[:-7].replace("/", "-")
+    else:
+        return path
+
+def get_authors(change_list):
+    for change in change_list:
+        name, email = parseaddr(change["author"])
+        change["author"] = {"name": name, "email": email}
+
+    names = dict(get_names(set(change["author"]["email"] for change in change_list)))
+    for change in change_list:
+        d = names.get(change["author"]["email"], None)
+        if not d:
+            continue
+
+        change["author"].update(d)
+
+def get_titles(change_list):
+    from whoosh.query import Or, Term
+    terms = [
+        Term("path", path)
+        for path in set(
+                os.path.splitext(c["link"].split("#", 1)[0])[0] + ".txt"
+                for change in change_list
+                for c in change["changes"]
+                if c["link"])]
+    q = Or(terms)
+
+    d = {hit["path"]: hit.get("title_t", [None])[0]
+         for hit in config.index.search(q, limit=len(terms))
+         if "title_t" in hit}
+
+    for change in change_list:
+        for c in change["changes"]:
+            if not c["link"]:
+                continue
+            base, ext = os.path.splitext(c["link"].split("#", 1)[0])
+            title = d.get(base+".txt", None)
+            if title:
+                if ext != '.txt':
+                    title = title + ext
+                c["title"] = title
+
+
+def changes(request):
+    if request.method != 'POST':
+        return default_page()
+
+    repo = config.repo
+    commit = repo.get_latest_commit()
+    change_list = list(repo.changes())
+    for change in change_list:
+        for c in change["changes"]:
+            c["link"] = get_link(repo, commit, c["path"])
+
+    get_titles(change_list)
+    get_authors(change_list)
+
+    return json_response(change_list)
+
 def router_middleware(options):
     def middleware(request, following):
         handler, args = router.match(request.environ["PATH_INFO"])
@@ -342,6 +430,7 @@ urls = [
     ("/hypothesis/", hypothesis_urls),
     ("/authenticate", authenticate),
     ("/change-password", change_password),
+    ("/changes", changes),
 ]
 
 router = PathRouter()

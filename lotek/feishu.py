@@ -30,7 +30,6 @@ def code_blocks_to_markdown(blocks):
     for block in blocks or []:
         if block["type"] == "paragraph":
             paragraph = block["paragraph"]
-            yield INDENT
             for elem in paragraph["elements"]:
                 if elem["type"] == 'textRun':
                     textRun = elem["textRun"]
@@ -159,10 +158,11 @@ def to_markdown(content, editor_url):
             yield '\n-----\n'
         elif block["type"] == "code":
             code = block["code"]
-            yield '\n    :::'
+            yield '\n```'
             yield code["language"].lower()
             yield '\n'
             yield from code_blocks_to_markdown(code["body"]["blocks"])
+            yield '```\n'
         elif block["type"] == "callout":
             callout = block["callout"]
             background_color = to_rgba(callout.get("calloutBackgroundColor"))
@@ -178,8 +178,8 @@ def to_markdown(content, editor_url):
             zoneid = callout['zoneId']
             yield '\n'
             if style:
-                yield f'<style>.{zoneid} {{ {style} }}</style>\n'
-            yield f'!!! callout {zoneid} ":'
+                yield f'<style>.callout-{zoneid} {{ {style} }}</style>\n'
+            yield f'!!! callout callout-{zoneid} ":'
             yield callout["calloutEmojiId"]
             yield ':"'
 

@@ -14,6 +14,22 @@ function is_blocked(card, cards) {
 
 const Milestone = {
     oninit: function(vnode) {
+        document.title = vnode.attrs.path;
+
+        m.request(
+            {method: "GET",
+             url: "/files/:path...",
+             params: {path: vnode.attrs.path},
+             responseType: "json"}
+        ).then(
+            function (result) {
+                document.title = (result.title_t || [vnode.attrs.path])[0];
+            },
+            function (error) {
+                console.log(error);
+            }
+        );
+
         m.request(
             {method: "POST",
              url: "/search/",
@@ -83,6 +99,7 @@ const Milestone = {
 
 const Kanban = {
     oninit: function(vnode) {
+        document.title = 'Kanban';
         m.request(
             {method: "POST",
              url: "/search/",
@@ -278,6 +295,7 @@ const MilestoneForm = {
                    query: "category_i:project",
                    attribute: "project_i",
                    patch: vnode.attrs.patch,
+                   popover: "popover-right",
                   }
                  )
                ),
@@ -372,6 +390,7 @@ const CardForm = {
                    query: "category_i:milestone AND NOT end_d:>=20000101",
                    attribute: "milestone_i",
                    patch: vnode.attrs.patch,
+                   popover: "popover-right",
                   }
                  )
                ),
@@ -382,6 +401,7 @@ const CardForm = {
                    query: "category_i:operator",
                    attribute: "assignee_i",
                    patch: vnode.attrs.patch,
+                   popover: "popover-right",
                   }
                  )
                ),
@@ -392,6 +412,7 @@ const CardForm = {
                    query: `category_i:card AND NOT end_d:>=20000101 AND NOT path:${vnode.attrs.path}`,
                    attribute: "blocker_i",
                    patch: vnode.attrs.patch,
+                   popover: "popover-right",
                   }
                  )
                )
@@ -461,6 +482,7 @@ function format_card(card, row, start, end, today) {
 
 const Calendar = {
     oninit: function(vnode) {
+        document.title = 'Calendar';
         let now = new Date();
         let today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         let start = new Date(today.valueOf() - 86400000 * today.getDay());

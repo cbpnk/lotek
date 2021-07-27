@@ -81,5 +81,24 @@ def get_name(email):
     commit = repo.get_latest_commit()
     filename = f"users/{domain}/{username}.txt"
     obj = repo.get_object(commit, filename)
+    if obj is None:
+        return
     metadata = parser.parse(repo.get_data(obj).decode())
     return metadata.get("title_t", [None])[0]
+
+
+def get_names(email_list):
+    from whoosh.query import Or, Term
+    terms = [
+        Term("path", "users/{1}/{0}.txt".format(*email.split('@', 1)))
+        for email in email_list]
+    q = Or(terms)
+
+    for hit in config.index.search(q, limit=len(terms)):
+        path = hit["path"]
+        domain, username = path[6:-4].split("/")
+        d = {"path": path}
+        name = hit.get("title_t", [None])[0]
+        if name:
+            d["name"] = name
+        yield f"{username}@{domain}", d

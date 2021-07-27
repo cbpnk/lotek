@@ -4,7 +4,7 @@ from datetime import datetime
 from random import choices
 from urllib.parse import parse_qs
 from email.utils import formataddr
-from .accounts import get_name
+from .accounts import get_name, get_names
 from .config import config
 from .index import spawn_indexer
 
@@ -216,7 +216,7 @@ def reconstruct_link(obj, key, prefix):
         return
     obj[key] = prefix + obj[key][1:]
 
-def normalize_annotation(payload, id, prefix):
+def normalize_annotation(payload, id, prefix, user_info=True):
     reconstruct_link(payload, "uri", prefix)
     for target in payload["target"]:
         reconstruct_link(target, "source", prefix)
@@ -229,14 +229,15 @@ def normalize_annotation(payload, id, prefix):
     }
     payload["id"] = id.replace("/", "-")
     email = payload["user"][5:]
-    payload["user_info"] = {"display_name":  get_name(email)}
+    if user_info:
+        payload["user_info"] = {"display_name":  get_name(email)}
 
 def get_row(hit, repo, commit, prefix):
     path = hit["path"].split("#annotations:", 1)[1].replace("-", "/")+".h.json"
     obj = repo.get_object(commit, path)
     data = repo.get_data(obj)
     payload = json.loads(data)
-    normalize_annotation(payload, path[:-7], prefix)
+    normalize_annotation(payload, path[:-7], prefix, user_info=False)
     return payload
 
 def api_search(request):
@@ -262,7 +263,14 @@ def api_search(request):
     ])
     commit = repo.get_latest_commit()
 
-    rows = [get_row(hit, repo, commit, prefix) for hit in config.index.search(q, sortedby="created_d")]
+    rows = [get_row(hit, repo, commit, prefix) for hit in config.index.search(q, sortedby="created_d", limit=None)]
+
+    emails = {email:d["name"]
+              for email, d in get_names(set(row["user"][5:] for row in rows))
+              if "name" in d}
+
+    for row in rows:
+        row["user_info"] = {"display_name": emails.get(row["user"][5:], None)}
 
     response = HTTPResponse(content_type='application/json')
     response.write(json.dumps(

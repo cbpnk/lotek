@@ -75,6 +75,7 @@ class MarkdownParser:
                 'admonition',
                 'pymdownx.emoji',
                 'attr_list',
+                'fenced_code',
                 WikiLinkExtension()],
             extension_configs = {
                 'pymdownx.tasklist': {
@@ -96,8 +97,9 @@ class MarkdownParser:
         md = self._md()
         html = md.convert(d["content"])
         links = list(md.wikilinks)
-        links.sort()
-        d["link_i"] = links
+        if links:
+            links.sort()
+            d["link_i"] = links
         return d, html
 
     def format(self, metadata):

@@ -19,6 +19,7 @@ class Config:
         self._config = mod
         self.CONFIG_FILE = mod.__file__
         self.STATIC_ROOT = mod.STATIC_ROOT
+        self.CACHE_ROOT = mod.STATIC_ROOT
 
     @cached_property
     def repo(self):
@@ -56,6 +57,7 @@ def load_config(filename):
     d.setdefault('REPO_ROOT', 'git')
     d.setdefault('INDEX_ROOT', 'index')
     d.setdefault('STATIC_ROOT', 'static')
+    d.setdefault('CACHE_ROOT', 'static')
     d.setdefault('__file__', None)
     return Config(mod)
 

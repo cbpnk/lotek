@@ -19,6 +19,7 @@ const Action = {
 
 const Search = {
     oninit: function(vnode) {
+        document.title = 'Search ' + vnode.attrs.key;
         vnode.state.results = false;
         m.request(
             {method: "POST",

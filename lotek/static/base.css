@@ -39,6 +39,7 @@ main {
     max-width: 1200px;
     justify-self: center;
     padding: 1em;
+    overflow-y: auto;
 }
 
 aside.left {

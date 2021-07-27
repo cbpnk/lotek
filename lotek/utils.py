@@ -58,7 +58,7 @@ def import_file(source_filename, f, mode=None, **kwargs):
     from pdfminer.pdfparser import PDFParser
     from pdfminer.pdfdocument import PDFDocument
 
-    ext = os.path.splitext(source_filename)[1]
+    basename, ext = os.path.splitext(source_filename)
     hexdigest = hash_file(f)
     filename = f'{hexdigest[0:3]}/{hexdigest[3:6]}/{hexdigest[6:]}{ext}'
     txtname = f'{hexdigest[0:3]}/{hexdigest[3:6]}/{hexdigest[6:]}.txt'
@@ -80,7 +80,7 @@ def import_file(source_filename, f, mode=None, **kwargs):
     author = metadata.pop("Author", None)
     if author:
         meta["author_t"] = [a.strip() for a in author.split(",")]
-    title = metadata.pop("Title", os.path.basename(source_filename) if mode else source_filename)
+    title = metadata.pop("Title", os.path.basename(basename) if mode else basename)
     if title:
         meta["title_t"] = [title]
     keywords = metadata.pop("Keywords", None)

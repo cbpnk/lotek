@@ -74,8 +74,11 @@ export const AutoCompleteInput = {
                 (path) =>
                 m("div.my-2",
                   m("div.popover",
+                    {"class": vnode.attrs.popover},
                     m("span.chip",
-                      m(Title, {doc: vnode.state.items[path], path}),
+                      m(m.route.Link,
+                        {href: m.buildPathname("/view/:path...", {path})},
+                        m(Title, {doc: vnode.state.items[path], path})),
                       (!vnode.attrs.patch)?null:
                       m("button.btn.btn-clear", {onclick: function() {remove_path(path);}}),
                       m("div.popover-container",

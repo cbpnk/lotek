@@ -1,8 +1,16 @@
 import {get_token} from "/static/user.js";
 
+function update_doc(vnode, result) {
+    vnode.state.doc = result.response;
+    vnode.state.etag = result.etag;
+    document.title = (vnode.state.doc.title_t || [vnode.attrs.path])[0];
+    m.redraw();
+}
+
 
 const View = {
     oninit: function(vnode) {
+        document.title = vnode.attrs.path;
         vnode.state.edit = false;
         vnode.state.doc = false;
         m.request(
@@ -13,9 +21,7 @@ const View = {
              extract: function(xhr) { return {etag: xhr.getResponseHeader("ETag"), response: xhr.response}; }}
         ).then(
             function (result) {
-                vnode.state.doc = result.response;
-                vnode.state.etag = result.etag;
-                m.redraw();
+                update_doc(vnode, result);
             },
             function (error) {
                 if (error.code == 404) {
@@ -29,43 +35,9 @@ const View = {
     view: function(vnode) {
         let token = get_token();
         if (vnode.state.doc === null) {
-            if (!vnode.state.edit) {
-                function onclick() {
-                    m.request(
-                        {method: "PUT",
-                         url: "/files/home.txt",
-                         params: {path: vnode.attrs.path},
-                         headers: {'X-Lotek-Date': (new Date()).toUTCString(),
-                                   'Content-Type': "application/json",
-                                   'Authorization': `Bearer ${token}`},
-                         body: {"title_t": ["Home"]}}
-                    ).then(
-                        function(result) {
-                            vnode.state.doc = result.response;
-                            vnode.state.etag = result.etag;
-                            m.redraw();
-                        },
-                        function(error) {
-                            console.log(error);
-                        }
-                    )
-                }
-
-                return [
-                    m("main",
-                      (vnode.attrs.path !== 'home.txt')?"NOT FOUND":
-                      m("div.empty",
-                        m("div.empty-action",
-                          token?m("button.btn.btn-primary", {onclick}, "Create Home Page"):null
-                         )
-                       )
-                     )
-                ];
-            } else {
-                return [
-                    m("main", "NOT FOUND")
-                ];
-            }
+            return [
+                m("main", "NOT FOUND")
+            ];
         }
         if (vnode.state.doc === false) {
             return [
@@ -85,10 +57,9 @@ const View = {
                 }
             ).then(
                 function (result) {
-                    vnode.state.doc = result.response;
-                    vnode.state.etag = result.etag;
                     vnode.state.edit = false;
-                    m.redraw();
+                    update_doc(vnode, result);
+                    return vnode.state.doc;
                 },
                 function (error) {
                     console.log(error);
@@ -110,9 +81,7 @@ const View = {
                 }
             ).then(
                 function (result) {
-                    vnode.state.doc = result.response;
-                    vnode.state.etag = result.etag;
-                    m.redraw();
+                    update_doc(vnode, result);
                     return vnode.state.doc;
                 },
                 function (error) {
@@ -168,7 +137,6 @@ export const routes = {
     "/view/:path...": (vnode) => m(View, {key: m.route.get(), path: vnode.attrs.path})
 };
 
-export const links = [{url: "/view/home.txt", name: "Home"}];
 
 export const registry = {
     editor_widgets: [],

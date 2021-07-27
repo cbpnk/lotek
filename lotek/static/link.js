@@ -26,7 +26,7 @@ const Widget = {
             vnode.state.items.map(
                 (item) =>
                 m("div.my-2",
-                  m("div.popover",
+                  m("div.popover.popover-left",
                     m("span.chip",
                       m(m.route.Link,
                         {href: m.buildPathname("/view/:path...", {path: item.path})},

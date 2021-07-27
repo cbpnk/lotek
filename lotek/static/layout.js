@@ -41,7 +41,7 @@ function main() {
                 ([key, value]) =>
                 [key,
                  {render: function(vnode) {
-                      return (vnode.tag !== "div")?vnode:m(Layout, value(vnode));
+                      return m(Layout, value(vnode));
                   }}]
             ))
     );
