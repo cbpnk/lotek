@@ -1,0 +1,12 @@
+@require(token, next)
+<!doctype html>
+<html>
+<head>
+<script type="text/javascript">
+localStorage.setItem("token", "@token");
+window.location.href=`${window.location.origin}@{next}`;
+</script>
+</head>
+<body>
+</body>
+</html>

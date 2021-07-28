@@ -10,14 +10,14 @@ from mimetypes import guess_type
 from email.utils import parsedate_to_datetime, formataddr, parseaddr
 import jsonpatch
 import json
-from urllib.request import urlretrieve
-from urllib.parse import quote
+from urllib.request import urlretrieve, urlopen, Request
+from urllib.parse import quote, urlencode
 from shutil import move
 from warnings import catch_warnings
 from .config import config
 from .hypothesis import hypothesis_urls
 from .index import spawn_indexer
-from .accounts import check_passwd, replace_passwd, get_name, get_names
+from .accounts import check_passwd, replace_passwd, get_name, get_names, ensure_user
 from .utils import create_new_txt, import_file
 
 try:
@@ -122,7 +122,7 @@ def get_txt_file(request, commit, filename):
             title = metadata.get("title_t", ["Untitled"])[0]
             response = HTTPResponse(content_type='text/html; charset=utf-8')
             response.headers.append(("Vary", "Accept"))
-            template = engine.get_template(f'txt.html')
+            template = engine.get_template('txt.html')
             response.write_bytes(template.render({"title": title, "html": html}).encode())
             return response
         elif mime_type in ('text/plain', '*/*'):
@@ -377,9 +377,12 @@ def get_titles(change_list):
                 if c["link"])]
     q = Or(terms)
 
-    d = {hit["path"]: hit.get("title_t", [None])[0]
-         for hit in config.index.search(q, limit=len(terms))
-         if "title_t" in hit}
+    if terms:
+        d = {hit["path"]: hit.get("title_t", [None])[0]
+             for hit in config.index.search(q, limit=len(terms))
+             if "title_t" in hit}
+    else:
+        d = {}
 
     for change in change_list:
         for c in change["changes"]:
@@ -409,6 +412,62 @@ def changes(request):
 
     return json_response(change_list)
 
+def openid_redirect(request):
+    next = request.query.get("next", ["/"])[0]
+    scheme = request.environ["wsgi.url_scheme"]
+    host = request.environ["HTTP_HOST"]
+    baseurl = f"{scheme}://{host}/"
+
+    params = urlencode(
+        {"openid.ns": "http://specs.openid.net/auth/2.0",
+	 "openid.ns.sreg": "http://openid.net/extensions/sreg/1.1",
+	 "openid.sreg.required": "nickname",
+	 "openid.sreg.optional": "fullname,email",
+	 "openid.realm": baseurl,
+	 "openid.mode": "checkid_setup",
+	 "openid.return_to": baseurl + "openid/callback?" + urlencode({"next": next}),
+	 "openid.identity": "http://specs.openid.net/auth/2.0/identifier_select",
+	 "openid.claimed_id": "http://specs.openid.net/auth/2.0/identifier_select"})
+
+    return redirect(
+        config._config.OPENID_ENDPOINT + "?" + params
+    )
+
+
+def find_sreg_ns(query):
+    for name, value in query.items():
+        if not name.startswith("openid.ns."):
+            continue
+        if value == "http://openid.net/extensions/sreg/1.1":
+            return name[10:]
+
+def openid_callback(request):
+    query = request.query.copy()
+    next = query.pop("next", ["/"])[0]
+    query = {k: v[0] for k, v in query.items()}
+    query["openid.mode"] = "check_authentication"
+
+    response = urlopen(
+        Request(
+            method='POST',
+            url=config._config.OPENID_ENDPOINT,
+            data=urlencode(query).encode()))
+    result = dict(line.split(b":", 1) for line in response.read().splitlines())
+    if result.get(b"is_valid", b"false") == b"true":
+        ns = find_sreg_ns(query)
+        if ns:
+            email = query.get(f"openid.{ns}.email", None)
+            fullname = query.get(f"openid.{ns}.fullname", None)
+            if email:
+                ensure_user(email, fullname)
+                response = HTTPResponse(content_type='text/html; charset=utf-8')
+                template = engine.get_template('openid.html')
+                response.write_bytes(template.render({"token": email, "next": next}).encode())
+                return response
+    return redirect(next)
+
+
+
 def router_middleware(options):
     def middleware(request, following):
         handler, args = router.match(request.environ["PATH_INFO"])
@@ -431,6 +490,8 @@ urls = [
     ("/authenticate", authenticate),
     ("/change-password", change_password),
     ("/changes", changes),
+    ("/openid/redirect", openid_redirect),
+    ("/openid/callback", openid_callback)
 ]
 
 router = PathRouter()

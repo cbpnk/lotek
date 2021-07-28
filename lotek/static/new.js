@@ -1,4 +1,4 @@
-import {get_token} from "/static/user.js";
+import {get_token} from "/static/auth.js";
 
 const Action = {
     oninit: function(vnode) {

@@ -19,7 +19,7 @@ class Config:
         self._config = mod
         self.CONFIG_FILE = mod.__file__
         self.STATIC_ROOT = mod.STATIC_ROOT
-        self.CACHE_ROOT = mod.STATIC_ROOT
+        self.CACHE_ROOT = mod.CACHE_ROOT
 
     @cached_property
     def repo(self):
@@ -51,7 +51,7 @@ def load_config(filename):
             code = compile(f.read(), filename, 'exec')
         exec(code, d)
 
-    d.setdefault('PLUGINS', ['media', 'link', 'tag', 'kanban', 'debug'])
+    d.setdefault('PLUGINS', ['user', 'media', 'link', 'tag', 'kanban', 'debug'])
     d.setdefault('EDITOR', 'textarea')
     d.setdefault('TXT_FORMAT', 'markdown')
     d.setdefault('REPO_ROOT', 'git')

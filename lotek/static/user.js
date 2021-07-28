@@ -1,3 +1,5 @@
+import {get_token, set_token, clear_token} from "/static/auth.js";
+
 const Action = {
     oninit: function(vnode) {
         vnode.state.active = {};
@@ -9,11 +11,11 @@ const Action = {
     },
 
     view: function(vnode) {
-        let token = localStorage.getItem('token');
+        let token = get_token();
         let email = token;
 
         function logout() {
-            localStorage.clear();
+            clear_token();
             m.redraw();
         }
 
@@ -130,7 +132,7 @@ const Action = {
                 }
             ).then(
                 function(result) {
-                    localStorage.setItem('token', result);
+                    set_token(result);
                     vnode.state.email = '';
                     vnode.state.password = '';
                     vnode.state.active["sign-in"] = false;
@@ -188,9 +190,3 @@ export const categories = {
         name: "User",
         readonly: true}
 };
-
-export function get_token() {
-    let token = localStorage.getItem('token');
-    if (token)
-        return token;
-}

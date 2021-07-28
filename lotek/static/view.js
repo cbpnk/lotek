@@ -1,4 +1,4 @@
-import {get_token} from "/static/user.js";
+import {get_token} from "/static/auth.js";
 
 function update_doc(vnode, result) {
     vnode.state.doc = result.response;
@@ -6,7 +6,6 @@ function update_doc(vnode, result) {
     document.title = (vnode.state.doc.title_t || [vnode.attrs.path])[0];
     m.redraw();
 }
-
 
 const View = {
     oninit: function(vnode) {

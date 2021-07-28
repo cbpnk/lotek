@@ -1,7 +1,8 @@
 from markdown import Markdown
 from markdown.extensions import Extension
-from markdown.inlinepatterns import Pattern
-from markdown.util import etree
+from markdown.inlinepatterns import InlineProcessor
+from markdown.treeprocessors import Treeprocessor
+from markdown.util import etree, HTML_PLACEHOLDER_RE
 from markdown.preprocessors import NormalizeWhitespace
 from markdown.extensions.meta import MetaPreprocessor
 
@@ -17,9 +18,9 @@ def build_link(target, text=None):
         text = find_title(target) or target
     return f"/view/{target}" , text
 
-class WikiLinks(Pattern):
+class WikiLinks(InlineProcessor):
 
-    def handleMatch(self, m):
+    def handleMatch(self, m, data):
         target = m.group("target")
         text = m.group("text")
         text = text[1:] if text else None
@@ -28,7 +29,7 @@ class WikiLinks(Pattern):
         a = etree.Element('a')
         a.text = text
         a.set('href', url)
-        return a
+        return a, m.start(0), m.end(0)
 
 
 class WikiLinkExtension(Extension):
@@ -39,10 +40,25 @@ class WikiLinkExtension(Extension):
         WIKILINK_RE = r'\[\[(?P<target>[@\w/0-9:_ -\.]+)(?P<text>(?:\|[\w/0-9:_ -]+)?)\]\]'
         pattern = WikiLinks(WIKILINK_RE)
         pattern.md = md
-        md.inlinePatterns.add('wikilink', pattern, "<not_strong")
+        md.inlinePatterns.register(pattern, 'wikilink', 75)
 
     def reset(self):
         self.md.wikilinks = set()
+
+class TasklistCollector(Treeprocessor):
+
+    def run(self, root):
+        for elem in root.findall(".//li[@class='task-list-item']"):
+            checked = "checked" in self.md.htmlStash.rawHtmlBlocks[int(HTML_PLACEHOLDER_RE.search(elem.text).group(1))]
+            text = HTML_PLACEHOLDER_RE.sub('', elem.text)
+        return root
+
+
+class CollectTasklistExtension(Extension):
+
+    def extendMarkdown(self, md):
+        collector = TasklistCollector(md)
+        md.treeprocessors.register(collector, "collect-task-list", 24)
 
 
 def emoji_to_unicode(index, shortname, alias, uc, alt, title, category, options, md):

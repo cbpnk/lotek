@@ -78,8 +78,35 @@ class GitRepo:
     def get_data(self, obj):
         return self.repo[obj].data
 
+    def _replace_content(self, old_tree, parts, content, mediafile):
+        from dulwich.objects import Tree, Blob
+
+        tree = Tree()
+        if old_tree is not None:
+            for name, mode, sha in old_tree.items():
+                if name == parts[0]:
+                    continue
+                tree.add(name, mode, sha)
+        if len(parts) == 1:
+            blob = Blob.from_string(content)
+            self.repo.object_store.add_object(blob)
+            tree.add(parts[0], 0o100644, blob.id)
+            if mediafile:
+                blob = Blob.from_string(os.path.relpath(f".git/media/{mediafile}", os.path.dirname(mediafile)).encode())
+                self.repo.object_store.add_object(blob)
+                tree.add(os.path.basename(mediafile).encode(), 0o120000, blob.id)
+        else:
+            old_subtree = None
+            if old_tree is not None and parts[0] in old_tree:
+                mode, sha = old_tree[parts[0]]
+                old_subtree = self.repo[sha]
+            subtree = self._replace_content(old_subtree, parts[1:], content, mediafile)
+            tree.add(parts[0], 0o040000, subtree.id)
+        self.repo.object_store.add_object(tree)
+        return tree
+
     def replace_content(self, commit, filename, content, message, author=None, author_time=None, mediafile=None):
-        from dulwich.objects import Commit, Blob
+        from dulwich.objects import Commit
         from dulwich.repo import get_user_identity
         from dulwich.object_store import commit_tree_changes
         import time
@@ -89,15 +116,7 @@ class GitRepo:
         old_tree = None
         if commit is not None:
             old_tree = self.repo[self.repo[commit].tree]
-
-        blob = Blob.from_string(content)
-        self.repo.object_store.add_object(blob)
-        changes = [(filename, 0o100644, blob.id)]
-        if mediafile:
-            blob = Blob.from_string(os.path.relpath(f".git/media/{mediafile}", os.path.dirname(mediafile)).encode())
-            self.repo.object_store.add_object(blob)
-            changes.append((mediafile.encode(), 0o120000, blob.id))
-        tree = commit_tree_changes(self.repo.object_store, old_tree, changes)
+        tree = self._replace_content(old_tree, filename.split(b"/"), content, mediafile)
         config = self.repo.get_config()
 
         new_commit = Commit()

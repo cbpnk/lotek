@@ -44,6 +44,14 @@ def run_useradd():
     replace_passwd(username, domain, password)
 
 
+def ensure_user(email, fullname):
+    username, domain = email.split('@', 1)
+    name = fullname or username
+    filename = f"users/{domain}/{username}.txt"
+    meta = {"title_t": [name], "category_i": ["user"]}
+    create_new_txt(filename, meta)
+
+
 def run_passwd(email):
     username, domain = email.split('@', 1)
     password = getpass("Password: ")
@@ -88,6 +96,8 @@ def get_name(email):
 
 
 def get_names(email_list):
+    if not email_list:
+        return
     from whoosh.query import Or, Term
     terms = [
         Term("path", "users/{1}/{0}.txt".format(*email.split('@', 1)))
