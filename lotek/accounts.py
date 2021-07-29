@@ -31,6 +31,7 @@ def replace_passwd(username, domain, password, **kwargs):
 
 
 def run_useradd():
+    from .index import run_indexer
     email = input("Email: ")
     username, domain = email.split('@', 1)
     name = input("Name: ") or username
@@ -42,7 +43,7 @@ def run_useradd():
     meta = {"title_t": [name], "category_i": ["user"]}
     assert create_new_txt(filename, meta), "user already exist"
     replace_passwd(username, domain, password)
-
+    run_indexer()
 
 def ensure_user(email, fullname):
     username, domain = email.split('@', 1)
@@ -50,6 +51,8 @@ def ensure_user(email, fullname):
     filename = f"users/{domain}/{username}.txt"
     meta = {"title_t": [name], "category_i": ["user"]}
     create_new_txt(filename, meta)
+    from .index import spawn_indexer
+    spawn_indexer()
 
 
 def run_passwd(email):

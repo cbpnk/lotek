@@ -2,7 +2,6 @@ import os
 
 def create_new_txt(filename, metadata, message=None, author=None, **kwargs):
     from .config import config
-    from .index import run_indexer
     repo = config.repo
     parser = config.parser
 
@@ -24,23 +23,27 @@ def create_new_txt(filename, metadata, message=None, author=None, **kwargs):
             if repo.replace_content(commit, filename, parser.format(meta), f"Setup: {filename}"):
                 break
 
-    run_indexer()
     return True
 
 def decode(s):
-    from pdfminer.utils import PDFDocEncoding
+    from pdfminer.utils import decode_text
     from pdfminer.psparser import PSLiteral
+    from pdfminer.pdftypes import PDFObjRef
+
+
+    if isinstance(s, PDFObjRef):
+        s = s.resolve()
+
+    if isinstance(s, list):
+        return list(map(decode, s))
 
     if isinstance(s, PSLiteral):
         s = s.name
 
-    if isinstance(s, bytes) and s.startswith(b'\xfe\xff'):
-        return s[2:].decode('utf-16be')
-    else:
-        if isinstance(s, str):
-            s = [ord(c) for c in s]
+    if isinstance(s, str):
+        s = s.encode()
 
-        return "".join(PDFDocEncoding[c] for c in s)
+    return decode_text(s)
 
 
 def hash_file(f, name='sha256'):
@@ -80,7 +83,7 @@ def import_file(source_filename, f, mode=None, **kwargs):
     author = metadata.pop("Author", None)
     if author:
         meta["author_t"] = [a.strip() for a in author.split(",")]
-    title = metadata.pop("Title", os.path.basename(basename) if mode else basename)
+    title = metadata.pop("Title", None) or os.path.basename(basename) if mode else basename
     if title:
         meta["title_t"] = [title]
     keywords = metadata.pop("Keywords", None)
@@ -95,9 +98,10 @@ def import_file(source_filename, f, mode=None, **kwargs):
 
 
 def run_import(source_filename, mode):
+    from .index import run_indexer
     with open(source_filename, 'rb') as f:
         print(import_file(source_filename, f, mode))
-
+    run_indexer()
 
 def index_file(path, add_document):
     from .config import config

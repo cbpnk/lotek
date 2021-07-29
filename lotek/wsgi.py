@@ -160,6 +160,7 @@ def txt_file(request, path):
         if not create_new_txt(filename, meta, author=author, author_time=date):
             return http_error(409)
 
+        spawn_indexer()
         return json_response("OK")
 
     elif request.method == 'POST':
@@ -285,6 +286,7 @@ def upload_file(request):
         f = request.files.get('file', [None])[0]
 
         filename = import_file(f.filename, f.file, author=author, author_time=date)
+        spawn_indexer()
         return json_response(filename)
     return method_not_allowed()
 
