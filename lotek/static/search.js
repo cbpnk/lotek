@@ -37,21 +37,24 @@ const Search = {
 
     view: function(vnode) {
         if (vnode.state.results === false) {
-            return m("div.loading.loading-lg");
+            return html`<div class="loading loading-lg"></div>`;
         }
-        return m("main",
-                 vnode.state.results.map(
-                     (result) =>
-                     m("div.card.my-1",
-                       m("div.card-header",
-                         m("div.card-title.h4.text-ellipsis",
-                           m(Link, {key: result.path, doc: result})),
-                         m("div.card-subtitle", result.path)),
-                       m("div.card-body",
-                         m.trust(result.excerpts)
-                        )
-                      )
-                 ));
+        return html`
+<main>
+${ vnode.state.results.map(
+     (result) => html`
+<div class="card my-1">
+  <div class="card-header">
+    <div class="card-title h4 text-ellipsis">
+      <${Link} key=${result.path} doc=${result}><//>
+    </div>
+    <div class="card-subtitle">${ result.path }</div>
+  </div>
+  <div class="card-body">
+    ${ m.trust(result.excerpts) }
+  </div>
+</div>`) }
+</main>`;
     }
 };
 

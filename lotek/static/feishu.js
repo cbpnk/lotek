@@ -4,31 +4,26 @@ const Editor = {
             vnode.attrs.save();
         }
 
-        return [
-            m("aside.top",
-              m("div.form-horizontal",
-                m("div.form-group",
-                  m("div.column.col-3", m("label.form-label", "Revision")),
-                  m("div.column", m("label.form-label", (vnode.attrs.doc.revision_n || [0])[0])),
-                  m("div",
-                    m("button.btn.btn-primary", {onclick}, "Save"),
-                    m("button.btn",
-                      {onclick: function(event) {
-                          event.preventDefault();
-                          vnode.attrs.hide();
-                      }},
-                      "Cancel")
-                   )
-                 )
-               )
-             ),
-            m("div",
-              {"style": "grid-column: 1 / span 3; margin: 1em;"},
-              m("iframe",
-                {style: "margin: 0 auto; width: 100%; height: 100%;",
-                 src: EDITOR_URL + m.buildPathname("/docs/:token", {token: vnode.attrs.doc.feishu_token_i[0]})})
-             )
-        ];
+        return html`
+<aside class="top">
+  <div class="form-horizontal">
+    <div class="form-group">
+      <div class="column col-3">
+        <label class="form-label">Revision</label>
+      </div>
+      <div class="column">
+        <label class="form-label">${ (vnode.attrs.doc.revision_n || [0])[0] }</label>
+      </div>
+      <div>
+        <button class="btn btn-primary" onclick=${ onclick }>Save</button>
+        <button class="btn" onclick=${ function(event) { event.preventDefault(); vnode.attrs.hide(); } }>Cancel</button>
+      </div>
+    </div>
+  </div>
+</aside>
+<div style="grid-column: 1 / span 3; margin: 1em;">
+  <iframe style="margin: 0 auto; width: 100%; height: 100%;" src=${ EDITOR_URL + m.buildPathname("/docs/:token", {token: vnode.attrs.doc.feishu_token_i[0]}) }></iframe>
+</div>`;
     }
 }
 

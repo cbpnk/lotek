@@ -56,23 +56,20 @@ var JSONView = {
 </body>
 </html>`;
 
-        return (vnode.attrs.patch)?m("div.off-canvas",
-                 m("button.off-canvas-toggle.btn.btn-primary",
-                   {onclick: function() {vnode.state.active=true;}},
-                   "Debug"),
-                 (!vnode.state.active)?null:
-                 m("div.off-canvas-sidebar.d-flex.active",
-                   {"style": "flex-direction: column;"},
-                   m("textarea", {oninput}, vnode.state.value),
-                   m("button.btn.btn-sm.btn-primary",
-                     {onclick, disabled: vnode.state.disabled}, "PATCH"),
-                   m("iframe", {"style": "margin: 0; padding: 0; border: none; height: 100%;", srcdoc})
-                  ),
-                 m("button.off-canvas-overlay",
-                   {onclick: function() {vnode.state.active=false;}},
-                   m("i.icon.icon-arrow-left")
-                  )
-                ):null;
+        return (vnode.attrs.patch)?
+            m("div.off-canvas",
+              html`<button class="off-canvas-toggle btn btn-primary" onclick=${ function() { vnode.state.active=true; } }>
+Debug
+</button>`,
+              (!vnode.state.active)?null:
+              html`<div class="off-canvas-sidebar d-flex active" style="flex-direction: column;">
+  <textarea oninput=${ oninput }>${ vnode.state.value }</textarea>
+  <button class="btn btn-sm btn-primary" onclick=${ onclick } disabled="${ vnode.state.disabled }">PATCH</button>
+  <iframe style="margin: 0; padding: 0; border: none; height: 100%;" srcdoc=${ srcdoc } />
+</div>`,
+              html`<button class="off-canvas-overlay" onclick=${ function() { vnode.state.active = false; } }>
+  <i class="icon icon-arrow-left" />
+</button>`):null;
     }
 }
 

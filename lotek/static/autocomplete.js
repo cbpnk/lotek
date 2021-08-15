@@ -59,63 +59,61 @@ export const AutoCompleteInput = {
         }
 
         if (!vnode.state.items) {
-            return m("div.input-group.form-autocomplete",
-                     (vnode.attrs.addon)?m("span.input-group-addon", vnode.attrs.addon):null,
-                     m("div.form-autocomplete-input.form-input",
-                       m("div.has-icon-left",
-                         m("input.form-input"),
-                         m("i.form-icon.loading"))
-                      )
-                    );
+            return html`
+<div class="input-group form-autocomplete">
+  ${ vnode.attrs.addon?html`<span class="input-group-addon">${ vnode.attrs.addon }</span>`:null }
+  <div class="form-autocomplete-input form-input">
+    <div class="has-icon-left">
+      <input class="form-input" />
+      <i class="form-icon loading" />
+    </div>
+  </div>
+</div>`;
         }
 
         return [
             (vnode.attrs.paths || []).map(
-                (path) =>
-                m("div.my-2",
-                  m("div.popover",
-                    {"class": vnode.attrs.popover},
-                    m("span.chip",
-                      m(m.route.Link,
-                        {href: m.buildPathname("/view/:path...", {path})},
-                        m(Title, {doc: vnode.state.items[path], path})),
-                      (!vnode.attrs.patch)?null:
-                      m("button.btn.btn-clear", {onclick: function() {remove_path(path);}}),
-                      m("div.popover-container",
-                        m("div.card",
-                          m("div.card-header",
-                            m("div.card-title.h5", m(Title, {doc: vnode.state.items[path], path})),
-                            m("div.card-subtitle", path)
-                           )
-                         )
-                       )
-                     )
-                   )
-                 )
-            ),
-            (!vnode.attrs.patch)?null:
-            m("div.input-group.form-autocomplete",
-              (vnode.attrs.addon)?m("span.input-group-addon.addon-sm", vnode.attrs.addon):null,
-
-              m("input.form-input.input-sm[type=text]", {oninput, value: vnode.state.value}),
-              (vnode.state.value==="")?null:
-              m("ul.menu",
-                vnode.state.suggests.map(
-                    (suggest) =>
-                    m("li.menu-item",
-                      m("a", {onclick: function() {add_path(suggest.path);}},
-                        m("div.tile",
-                          m("div.tile-content",
-                            m("div.tile-title.text-bold", (suggest.title_t || ["Untitled"])[0]),
-                            m("div.tile-subtitle", suggest.path)
-                           )
-                         )
-                       )
-                     )
-                )
-               )
-             )
-        ];
+                (path) => html`
+<div class="my-2">
+  <div class="popover ${ vnode.attrs.popover }">
+    <span class="chip">
+      <${m.route.Link} href=${ m.buildPathname("/view/:path...", {path}) }>
+        <${Title} path=${path} doc=${ vnode.state.items[path] }><//>
+      <//>
+    </span>
+    ${ (vnode.attrs.patch)?html`<button class="btn btn-clear" onclick=${ function() { remove_path(path); } }></button>`:null }
+    <div class="popover-container">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title h5"><${Title} doc=${ vnode.state.items[path] } path=${ path }><//></div>
+          <div class="card-subtitle">${ path }</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>`),
+            (!vnode.attrs.patch)?null:html`
+<div class="input-group form-autocomplete">
+  ${ (vnode.attrs.addon)?html`<span class="input-group-addon addon-sm">${ vnode.attrs.addon }</span>`:null }
+  <input class="form-input input-sm" type="text" oninput=${ oninput } value="${ vnode.state.value }" />
+  ${ (vnode.state.value === "")?null:html`
+<ul class="menu">
+  ${ vnode.state.suggests.map(
+       (suggest) => html`
+<li class="menu-item">
+  <a onclick=${ function() { add_path(suggest.path); } }>
+    <div class="tile">
+      <div class="tile-content">
+        <div class="tile-title text-bold">${ (suggest.title_t || ["Untitled"])[0] }</div>
+        <div class="tile-subtitle">${ suggest.path }</div>
+      </div>
+    </div>
+  </a>
+</li>`) }
+</ul>
+` }
+</div>`
+];
 
     }
 }

@@ -1,27 +1,26 @@
 const Layout = {
     view: function(vnode) {
-        function nav_link(link, name) {
-            return m("li.tab-item", {"class": (path===link?"active":"")}, m(m.route.Link, {href: link}, name));
-        }
-
         const path = window.location.pathname;
 
-        return [
-            vnode.children,
-            m("header",
-              m("ul.tab",
-                registry.links.map(
-                    (link) =>
-                    m("li.tab-item",
-                      {"class": (path===link.url?"active":"")},
-                      m(m.route.Link, {href: link.url}, link.name))
-                ),
-                m("li.tab-item.tab-action",
-                  registry.actions.map((action) => m(action, {})))
-               )
-             ),
-            m("footer.py-2")
-        ];
+        return html`
+${vnode.children}
+<header>
+  <ul class=tab>
+    ${ registry.links.map(
+         (link) =>
+         html`
+         <li class="tab-item ${path===link.url?"active":""}">
+            <${m.route.Link} href=${link.url}>${ link.name }<//>
+         </li>
+         `
+       )
+    }
+    <li class="tab-item tab-action">
+      ${ registry.actions.map((action) => m(action, {})) }
+    </li>
+  </ul>
+</header>
+<footer class=py-2/>`;
     }
 };
 

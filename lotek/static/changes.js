@@ -41,38 +41,43 @@ const Changes = {
     },
 
     view: function(vnode) {
-        return m(
-            "main",
-            m("div.timeline",
-              vnode.state.changes.map(
-                  (change) =>
-                  m("div.timeline-item",
-                    m("div.timeline-left",
-                      m("span.timeline-icon.icon-lg", m("i.icon"))
-                     ),
-                    m("div.timeline-content",
-                      m("div.tile",
-                        m("div.tile-content",
-                          m("p.tile-subtitle",
-                            new Date(change.time * 1000).toLocaleString()),
-                          m("p.tile-title",
-                            m("i.icon.icon-people"),
-                            format_author(change.author)),
-                          m("p.tile-tile", change.message),
-                          change.changes.map(
-                              (item) => 
-                              m("p.tile-title",
-                                m("i.icon", {"class": icons[item.type]}),
-                                format_link(item)
-                               )
-                          )
-                         )
-                       )
-                     )
-                   )
-              )
-             )
-        );
+        return html`
+<main>
+  <div class="timeline">
+  ${ vnode.state.changes.map(
+       (change) => html`
+<div class="timeline-item">
+  <div class="timeline-left">
+    <span class="timeline-icon.icon-lg">
+      <i class="icon" />
+    </span>
+  </div>
+  <div class="timeline-content">
+    <div class="tile">
+      <div class="tile-content">
+        <p class="tile-subtitle">
+          ${ new Date(change.time * 1000).toLocaleString() }
+        </p>
+        <p class="tile-title">
+          <i class="icon icon-people" />
+          ${ format_author(change.author) }
+        </p>
+        <p class="tile-title">
+          ${ change.message }
+        </p>
+        ${ change.changes.map(
+             (item) => html`
+<p class="tile-title">
+  <i class="icon ${icons[item.type]}" />
+  ${ format_link(item) }
+</p>`) }
+      </div>
+    </div>
+  </div>
+</div>`)
+  }
+  </div>
+</main>`;
     }
 };
 

@@ -60,22 +60,23 @@ const CategoryTabs = {
                       (vnode.attrs.patch && !registry.categories[category].readonly)?m("button.btn.btn-clear", {onclick: delete_category(category)}):null)
                    )
               ),
-              vnode.attrs.patch?
-              m("li.tab-item.tab-action",
-                m("div.dropdown",
-                  m("span.btn.btn-link.dropdown-toggle[tabindex=0]",
-                    m("i.icon.icon-plus")),
-                  m("ul.menu.text-left",
-                    new_categories.map(
-                        ([key, value]) =>
-                        m("li.menu-item",
-                          m("button.btn.btn-link", {onclick: new_category(key)}, value.name)
-                         )
-                    )
-                   )
-                 )
-               ):null
-             ),
+              vnode.attrs.patch?html`
+<li class="tab-item tab-action">
+  <div class="dropdown">
+    <span class="btn btn-link dropdown-toggle" tabindex="0">
+      <i class="icon icon-plus" />
+    </span>
+    <ul class="menu text-left">
+    ${ new_categories.map(
+         ([key, value]) => html`
+         <li class="menu-item">
+           <button class="btn btn-link" onclick=${ new_category(key) }>
+           ${ value.name }
+           </button>
+         </li>`) }
+    </ul>
+  </div>
+</li>`:null),
             (vnode.state.active && registry.categories[vnode.state.active].component)?
                 m(registry.categories[vnode.state.active].component,
                   {key: vnode.attrs.active, doc: vnode.attrs.doc, patch: vnode.attrs.patch, path: vnode.attrs.path})

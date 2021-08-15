@@ -12,31 +12,25 @@ const Action = {
 
         if (token) {
             let [username, domain] = email.split("@");
-            return [
-                m("div.dropdown.text-left",
-                  m("button.btn.btn-link.btn-sm.dropdown-toggle[tabindex='0']",
-                    email,
-                    m("i.icon.icon-caret")
-                   ),
-                  m("ul.menu",
-                    m("li.menu-item",
-                      m(m.route.Link,
-                        {href: m.buildPathname("/view/:path...", {path: `users/${domain}/${username}.txt`})},
-                        "Profile"
-                       )
-                     ),
-                    m("li.menu-item",
-                      m("a", {onclick: logout}, "Sign out")
-                     )
-                   )
-                 )
-            ];
+            return html`
+<div class="dropdown text-left">
+  <button class="btn btn-link btn-sm dropdown-toggle" tabindex="0">
+    ${ email }
+    <i class="icon icon-caret" />
+  </button>
+  <ul class="menu">
+    <li class="menu-item">
+      <${m.route.Link} href="${ m.buildPathname("/view/:path...", {path: `users/${domain}/${username}.txt`}) }">Profile<//>
+    </li>
+    <li class="menu-item"><a onclick=${ logout }>Sign out</a></li>
+  </ul>
+</div>`;
         }
 
-        return [
-            m("div.input-group.input-inline",
-              m("a.btn.btn-sm", {href: m.buildPathname("/openid/redirect", {next: window.location.pathname})}, "Sign in"))
-        ];
+        return html`
+<div class="input-group input-inline">
+  <a class="btn btn-sm" href="${ m.buildPathname("/openid/redirect", {next: window.location.pathname}) }">Sign in</a>
+</div>`;
     }
 };
 

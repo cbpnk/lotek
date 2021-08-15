@@ -510,25 +510,25 @@ const Calendar = {
         let start = new Date(today.valueOf() - 86400000 * today.getDay());
         let end = new Date(start.valueOf() + 86400000 * 7);
 
-        return m("div.calendar.calendar-lg",
-                 {"style": "grid-column: 1 / span 3; margin: 1em;"},
-                 m("div.calendar-nav.navbar",
-                   m("button.btn.btn-action.btn-link.btn-lg", m("i.icon.icon-arrow-left")),
-                   m("div.navbar-primary", `${today.getFullYear()}/${today.getMonth()+1}`),
-                   m("button.btn.btn-action.btn-link.btn-lg", m("i.icon.icon-arrow-right"))
-                  ),
-                 m("div.calendar-container",
-                   m("div.calendar-header",
-                     ["Sun", "Mon", "Tue", "Wed", "Thur", "Fri", "Sat"].map(
-                         (i) => m("div.calendar-date", i)
-                     )
-                    ),
-                   m("div.calendar-body",
-                     {style: "display: grid; grid-template-columns: repeat(7, 1fr);"},
-                     vnode.state.cards.map((card, i) => format_card(card, i+1, start, end, today))
-                    )
-                  )
-                );
+        return html`
+<div class="calendar calendar-lg" style="grid-column: 1 / span 3; margin: 1em;">
+  <div class="calendar-nav navbar">
+    <button class="btn btn-action btn-link btn-lg"><i class="icon icon-arrow-left" /></button>
+    <div class="navbar-primary">${today.getFullYear()}/${today.getMonth()+1}</div>
+    <button class="btn btn-action btn-link btn-lg"><i class="icon icon-arrow-right" /></button>
+  </div>
+  <div class="calendar-container">
+    <div class="calendar-header">
+      ${ ["Sun", "Mon", "Tue", "Wed", "Thur", "Fri", "Sat"].map(
+           (i) => html`<div class="calendar-date">${ i }</div>`
+         )
+       }
+    </div>
+    <div class="calendar-body" style="display: grid; grid-template-columns: repeat(7, 1fr);">
+      ${ vnode.state.cards.map((card, i) => format_card(card, i+1, start, end, today)) }
+    </div>
+  </div>
+</div>`;
     }
 };
 

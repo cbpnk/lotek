@@ -29,25 +29,15 @@ const Editor = {
             );
         }
 
-        return [
-            m("form.d-flex",
-              {"style": "flex-direction: column; grid-area: main; margin: 1em;",
-               onsubmit},
-              m("h2.input-group",
-                m("input.form-input[name='title'][placeholder='Title']",
-                  {value: (vnode.attrs.doc.title_t || [""])[0]}),
-                m("button.input-group-btn.btn.btn-primary", "Save"),
-                m("button.btn.input-group-btn",
-                  {onclick: function(event) {
-                      event.preventDefault();
-                      vnode.attrs.hide();
-                  }},
-                  "Cancel")
-               ),
-              m("textarea[name='content']",
-                {"style": "margin: 0 auto; width: 100%; height: 100%;"},
-                vnode.attrs.doc.content))
-        ];
+        return html`
+<form class="d-flex" style="flex-direction: column; grid-area: main; margin: 1em;" onsubmit=${ onsubmit }>
+  <h2 class="input-group">
+    <input class="form-input" name="title" placeholder="Title" value="${ (vnode.attrs.doc.title_t || [""])[0] }" />
+    <button class="input-group-btn btn btn-primary">Save</button>
+    <button class="btn input-group-btn" onclick=${ function(event) { event.preventDefault(); vnode.attrs.hide(); } }>Cancel</button>
+  </h2>
+  <textarea name="content" style="margin: 0 auto; width: 100%; height: 100%;">${ vnode.attrs.doc.content }</textarea>
+</form>`;
     }
 }
 

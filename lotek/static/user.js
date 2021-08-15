@@ -62,65 +62,53 @@ const Action = {
                 );
             }
 
-            return [
-                m("div.dropdown.text-left",
-                  m("button.btn.btn-link.btn-sm.dropdown-toggle[tabindex='0']",
-                    email,
-                    m("i.icon.icon-caret")
-                   ),
-                  m("ul.menu",
-                    m("li.menu-item",
-                      m(m.route.Link,
-                        {href: m.buildPathname("/view/:path...", {path: `users/${domain}/${username}.txt`})},
-                        "Profile"
-                       )
-                     ),
-                    m("li.menu-item",
-                      m("a", {onclick: show_modal("change-password")}, "Change Password")
-                     ),
-                    m("li.menu-item",
-                      m("a", {onclick: logout}, "Sign out")
-                     )
-                   )
-                 ),
-
-                m("div.modal.text-left",
-                  {"class": vnode.state.active["change-password"]?"active":""},
-                  m("a.modal-overlay", {onclick: hide_modal("change-password")}),
-                  m("div.modal-container",
-                    m("div.modal-header",
-                      m("button.btn.btn-clear.float-right", {onclick: hide_modal("change-password")}),
-                      m("div.modal-title", "Change Password")
-                     ),
-                    m("div.modal-body",
-                      m("form", {onsubmit},
-                        (vnode.state.error["change-password"])?m("div.toast.toast-error", vnode.state.error["change-password"]):null,
-                        m("div.form-group",
-                          m("label.form-label", "Password"),
-                          m("input.form-input[type=password]",
-                            {oninput: function(e) { vnode.state.password = e.target.value; },
-                             value: vnode.state.password})
-                         ),
-                        m("div.form-group",
-                          m("label.form-label", "New Password"),
-                          m("input.form-input[type=password]",
-                            {oninput: function(e) { vnode.state.new_password = e.target.value; },
-                             value: vnode.state.new_password})
-                         ),
-                        m("div.form-group",
-                          m("label.form-label", "Confirm"),
-                          m("input.form-input[type=password]",
-                            {oninput: function(e) { vnode.state.confirm = e.target.value; },
-                             value: vnode.state.confirm}),
-                         ),
-                        m("div.form-group",
-                          m("button.form-input.btn.btn-primary", "Submit")
-                         )
-                       )
-                     )
-                   )
-                 )
-            ];
+            return html`
+<div class="dropdown text-left">
+  <button class="btn btn-link btn-sm dropdown-toggle" tabindex="0">
+    ${ email }
+    <i class="icon icon-caret" />
+  </button>
+  <ul class="menu">
+    <li class="menu-item">
+      <${m.route.Link} href=${ m.buildPathname("/view/:path...", {path: `users/${domain}/${username}.txt`}) }>Profile<//>
+    </li>
+    <li class="menu-item">
+      <a onclick=${ show_modal("change-password") }>Change password</a>
+    </li>
+    <li class="menu-item">
+      <a onclick=${ logout }>Sign out</a>
+    </li>
+  </ul>
+</div>
+<div class="modal text-left ${ vnode.state.active["change-password"]?"active":"" }">
+  <a class="modal-overlay" onclick=${ hide_modal("change-password") }></a>
+  <div class="modal-container">
+    <div class="modal-header">
+      <button class="btn btn-clear float-right" onclick=${ hide_modal("change-password") }></button>
+      <div class="modal-title">Change Password</div>
+    </div>
+    <div class="modal-body">
+      <form onsubmit=${ onsubmit }>
+        ${ vnode.state.error["change-password"]?html`<div class="toast toast-error">${ vnode.state.error["change-password"] }</div>`:null }
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <input class="form-input" type="password" oninput=${ function(e) { vnode.state.password = e.target.value; } } value="${ vnode.state.password }" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">New Password</label>
+          <input class="form-input" type="password" oninput=${ function(e) { vnode.state.new_password = e.target.value; } } value="${ vnode.state.new_password }" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Confirm</label>
+          <input class="form-input" type="password" oninput=${ function(e) { vnode.state.confirm = e.target.value; } } value="${ vnode.state.confirm }" />
+        </div>
+        <div class="form-group">
+          <button class="form-input btn btn-primary">Submit</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>`;
         }
 
         function onsubmit(e) {
@@ -145,40 +133,35 @@ const Action = {
             );
         }
 
-        return [
-            m("div.input-group.input-inline",
-              m("button.btn.btn-sm", {onclick: show_modal("sign-in")}, "Sign in")),
-            m("div.modal.text-left",
-              {"class": vnode.state.active["sign-in"]?"active":""},
-              m("a.modal-overlay", {onclick: hide_modal("sign-in")}),
-              m("div.modal-container",
-                m("div.modal-header",
-                  m("button.btn.btn-clear.float-right", {onclick: hide_modal("sign-in")}),
-                  m("div.modal-title", "Sign in")
-                 ),
-                m("div.modal-body",
-                  m("form", {onsubmit},
-                    (vnode.state.error["sign-in"])?m("div.toast.toast-error", vnode.state.error["sign-in"]):null,
-                    m("div.form-group",
-                      m("label.form-label", "Email"),
-                      m("input.form-input[type=email]",
-                        {oninput: function(e) { vnode.state.email = e.target.value; },
-                         value: vnode.state.email})
-                     ),
-                    m("div.form-group",
-                      m("label.form-label", "Password"),
-                      m("input.form-input[type=password]",
-                        {oninput: function(e) { vnode.state.password = e.target.value; },
-                         value: vnode.state.password}),
-                     ),
-                    m("div.form-group",
-                      m("button.form-input.btn.btn-primary", "Submit")
-                     )
-                   )
-                 )
-               )
-             )
-        ];
+        return html`
+<div class="input-group input-inline">
+  <button class="btn btn-sm" onclick=${ show_modal("sign-in") }>Sign in</button>
+</div>
+<div class="modal text-left ${ vnode.state.active["sign-in"]?"active":"" }">
+  <a class="modal-overlay" onclick=${ hide_modal("sign-in") }></a>
+  <div class="modal-container">
+    <div class="modal-header">
+      <button class="btn btn-clear float-right" onclick=${ hide_modal("sign-in") }></button>
+      <div class="modal-title">Sign in</div>
+    </div>
+    <div class="modal-body">
+      <form onsubmit=${ onsubmit }>
+        ${ vnode.state.error["sign-in"]?html`<div class="toast toast-error">${ vnode.state.error["sign-in"] }</div>`:null }
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input class="form-input" type="email" oninput=${ function(e) { vnode.state.email = e.target.value; } } value="${ vnode.state.email }" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <input class="form-input" type="password" oninput=${ function(e) { vnode.state.password = e.target.value; } } value="${ vnode.state.password }" />
+        </div>
+        <div class="form-group">
+          <button class="form-input btn btn-primary">Submit</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>`;
     }
 };
 

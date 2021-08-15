@@ -77,43 +77,38 @@ const Action = {
             vnode.state.active = false;
         }
 
-        return [
-            m("div.dropdown.text-left",
-              m("span.btn.btn-link.dropdown-toggle[tabindex='0']",
-                m("i.icon.icon-plus"),
-                m("i.icon.icon-caret")
-               ),
-              m("ul.menu",
-                m("li.menu-item",
-                  m("button.btn.btn-link",
-                    {onclick: create_new_file},
-                    "New")),
-                m("li.menu-item",
-                  m("button.btn.btn-link",
-                    {onclick: show_modal},
-                    "Upload"))
-               )
-             ),
-            m("div.modal.text-left",
-              {"class": vnode.state.active?"active":""},
-              m("a.modal-overlay", {onclick: hide_modal}),
-              m("div.modal-container",
-                m("div.modal-header",
-                  m("button.btn.btn-clear.float-right", {onclick: hide_modal}),
-                  m("div.modal-title", "Upload")
-                 ),
-                m("div.modal-body",
-                  m("div.empty",
-                    (vnode.state.uploading === false)?
-                    m("input[type='file']", {onchange: upload})
-                    :
-                    m("progress.progress", {value: vnode.state.uploading, max: "1.0"})
-                   )
-                 )
-               )
-             )
-        ]
-
+        return html`
+<div class="dropdown text-left">
+  <span class="btn btn-link dropdown-toggle" tabindex="0">
+    <i class="icon icon-plus" />
+    <i class="icon icon-caret" />
+  </span>
+  <ul class="menu">
+    <li class="menu-item">
+      <button class="btn btn-link" onclick=${ create_new_file }>New</button>
+    </li>
+    <li class="menu-item">
+      <button class="btn btn-link" onclick=${ show_modal }>Upload</button>
+    </li>
+  </ul>
+</div>
+<div class="modal text-left ${ vnode.state.active?"active":"" }">
+  <a class="modal-overlay" onclick=${ hide_modal } />
+  <div class="modal-container">
+    <div class="modal-header">
+      <button class="btn btn-clear float-right" onclick=${ hide_modal }></button>
+      <div class="modal-title">Upload</div>
+    </div>
+    <div class="modal-body">
+      <div class="empty">
+        ${ (vnode.state.uploading === false)?
+           html`<input type="file" onchange=${upload} />`:
+           html`<progress class="progress" value="${vnode.state.uploading}" max="1.0" />`
+        }
+      </div>
+    </div>
+  </div>
+</div>`;
     }
 }
 

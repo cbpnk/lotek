@@ -4,13 +4,15 @@
 <head>
 <title></title>
 <script src="/static/vendor/npm/mithril@@2.0.4/mithril.js"></script>
+<script src="/static/vendor/npm/htm@@3.1.0/dist/htm.js"></script>
 <link rel="stylesheet" href="/static/vendor/npm/spectre.css@@0.5.9/dist/spectre.min.css">
 <link rel="stylesheet" href="/static/vendor/npm/spectre.css@@0.5.9/dist/spectre-exp.min.css">
 <link rel="stylesheet" href="/static/vendor/npm/spectre.css@@0.5.9/dist/spectre-icons.min.css">
 <link rel="stylesheet" href="/static/base.css">
 
 <script type="text/javascript">
-var EDITOR_URL = "@EDITOR_URL";
+const EDITOR_URL = "@EDITOR_URL";
+const html = htm.bind(m);
 const registry = {};
 registry.registry = registry;
 registry.onload = [];

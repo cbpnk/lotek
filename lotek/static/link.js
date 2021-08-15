@@ -24,26 +24,23 @@ const Widget = {
         return [
             (vnode.state.items.length>0)?m("div.divider", {"data-content": "Links to this"}):null,
             vnode.state.items.map(
-                (item) =>
-                m("div.my-2",
-                  m("div.popover.popover-left",
-                    m("span.chip",
-                      m(m.route.Link,
-                        {href: m.buildPathname("/view/:path...", {path: item.path})},
-                        m(Title, {doc: item, path: item.path})
-                       ),
-                      m("div.popover-container",
-                        m("div.card",
-                          m("div.card-header",
-                            m("div.card-title.h5", m(Title, {doc: item, item: item.path})),
-                            m("div.card-subtitle", item.path)
-                           )
-                         )
-                       )
-                     )
-                   )
-                 )
-            )
+                (item) => html`
+<div class="my-2">
+  <div class="popover popover-left">
+    <span class="chip">
+      <div class="popover-container">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title h5">
+              <${Title} doc=${ item } item=${ item.path }><//>
+            </div>
+            <div class="card-subtitle">${ item.path }</div>
+          </div>
+        </div>
+      </div>
+    </span>
+  </div>
+</div>`)
         ];
     }
 }

@@ -1,6 +1,7 @@
 个人信息管理工具，使用熵增主义技术栈开发。
 
 * mithril.js
+* htm
 * spectre.css
 * wheezy
 * dulwich
