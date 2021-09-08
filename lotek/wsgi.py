@@ -6,7 +6,7 @@ from wheezy.template.ext.core import CoreExtension
 from wheezy.template.ext.code import CodeExtension
 from wheezy.template.loader import FileLoader, autoreload
 from html import escape
-from mimetypes import guess_type
+from mimetypes import guess_type, add_type
 from email.utils import parsedate_to_datetime, formataddr, parseaddr
 import jsonpatch
 import json
@@ -16,9 +16,12 @@ from shutil import move
 from warnings import catch_warnings
 from .config import config
 from .hypothesis import hypothesis_urls
+from .wsb import wsb_urls
 from .index import spawn_indexer
-from .accounts import check_passwd, replace_passwd, get_name, get_names, ensure_user
+from .accounts import check_passwd, replace_passwd, get_addr, get_names, ensure_user
 from .utils import create_new_txt, import_file
+
+add_type("application/x-maff", ".maff")
 
 try:
     import uwsgi
@@ -113,18 +116,15 @@ def get_txt_file(request, commit, filename):
         mime_type = mime_type.strip().split(";", 1)[0]
         if mime_type == 'application/json':
             metadata, html = config.parser.convert(content.decode())
+            title = metadata.get("title_t", ["Untitled"])[0]
+            template = engine.get_template('txt.html')
+            metadata["html"] = template.render({"title": title, "html": html})
             response = json_response(metadata)
             response.headers.append(("Vary", "Accept"))
             response.headers.append(("ETag", obj.decode()))
             return response
         elif mime_type == 'text/html':
-            metadata, html = config.parser.convert(content.decode())
-            title = metadata.get("title_t", ["Untitled"])[0]
-            response = HTTPResponse(content_type='text/html; charset=utf-8')
-            response.headers.append(("Vary", "Accept"))
-            template = engine.get_template('txt.html')
-            response.write_bytes(template.render({"title": title, "html": html}).encode())
-            return response
+            return default_page()
         elif mime_type in ('text/plain', '*/*'):
             response = HTTPResponse(content_type='text/plain; charset=utf-8')
             response.headers.append(("Vary", "Accept"))
@@ -134,11 +134,17 @@ def get_txt_file(request, commit, filename):
         return http_error(406)
 
 
-def txt_file(request, path):
-    filename = path + ".txt"
-    if os.path.basename(filename).startswith("."):
-        return not_found()
+def get_request_date(request):
+    return parsedate_to_datetime(request.environ['HTTP_X_LOTEK_DATE'])
 
+def get_request_user(request):
+    token = request.environ.get("HTTP_AUTHORIZATION", '')
+    if not token.startswith('Bearer '):
+        return
+    username = token[7:]
+    return get_addr(username)
+
+def _txt_file(request, filename):
     repo = config.repo
 
     if request.method == 'GET':
@@ -146,14 +152,12 @@ def txt_file(request, path):
         return get_txt_file(request, commit, filename)
 
     parser = config.parser
-    token = request.environ.get("HTTP_AUTHORIZATION", '')
-    if not token.startswith('Bearer '):
+    author = get_request_user(request)
+    if author is None:
         return unauthorized()
-    email = token[7:]
-    author = formataddr((get_name(email), email))
+    date = get_request_date(request)
 
     if request.method == 'PUT':
-        date = parsedate_to_datetime(request.environ['HTTP_X_LOTEK_DATE'])
         body = request.stream.read(request.content_length)
         meta = json.loads(body) if body else {}
 
@@ -164,8 +168,6 @@ def txt_file(request, path):
         return json_response("OK")
 
     elif request.method == 'POST':
-        date = parsedate_to_datetime(request.environ['HTTP_X_LOTEK_DATE'])
-
         while True:
             commit = repo.get_latest_commit()
             if commit is None:
@@ -186,7 +188,6 @@ def txt_file(request, path):
         return get_txt_file(request, commit, filename)
 
     elif request.method == 'PATCH':
-        date = parsedate_to_datetime(request.environ['HTTP_X_LOTEK_DATE'])
         match = request.environ['HTTP_IF_MATCH']
         patch = json.loads(request.stream.read(request.content_length))
 
@@ -214,6 +215,17 @@ def txt_file(request, path):
         return get_txt_file(request, new_commit, filename)
     else:
         return method_not_allowed()
+
+
+def txt_file(request, path):
+    filename = path + ".txt"
+    if os.path.basename(filename).startswith("."):
+        return not_found()
+    return _txt_file(request, filename)
+
+def user_file(request, username):
+    filename = "~" + username
+    return _txt_file(request, filename)
 
 
 def media_file(request, filename):
@@ -258,10 +270,16 @@ def media_file(request, filename):
         for mime_type in accept_header.split(","):
             mime_type = mime_type.strip().split(";", 1)[0]
             if mime_type == 'text/html':
+                if request.environ.get("HTTP_REFERER", None) != f'{request.environ["wsgi.url_scheme"]}://{request.environ["HTTP_HOST"]}{request.environ["PATH_INFO"]}':
+                    return default_page()
                 response = HTTPResponse(content_type='text/html; charset=utf-8')
                 response.headers.append(("Vary", "Accept"))
                 template = engine.get_template(f'{ext}.html')
-                response.write_bytes(template.render({"title": title +"." + ext if title else filename}).encode())
+                mod = config.media_formats.get(f".{ext}", None)
+                context = {"title": title +"." + ext if title else filename}
+                if mod and hasattr(mod, 'render_context'):
+                    context.update(mod.render_context(filename, f))
+                response.write_bytes(template.render(context).encode())
                 return response
             elif mime_type in (content_type, '*/*'):
                 response = HTTPResponse(content_type=content_type)
@@ -274,15 +292,39 @@ def media_file(request, filename):
         return http_error(406)
 
 
-def upload_file(request):
-    if request.method == 'POST':
-        date = parsedate_to_datetime(request.environ['HTTP_X_LOTEK_DATE'])
-        token = request.environ.get("HTTP_AUTHORIZATION", '')
-        if not token.startswith('Bearer '):
-            return unauthorized()
-        email = token[7:]
-        author = formataddr((get_name(email), email))
+def maff_file(request, basename, path):
+    if request.method != 'GET':
+        return method_not_allowed()
 
+    from zipfile import ZipFile
+
+    try:
+        maff = ZipFile(config.repo.file_path(basename + ".maff"))
+    except FileNotFoundError:
+        return not_found()
+
+    with maff:
+        try:
+            f = maff.open(path)
+        except KeyError:
+            return not_found()
+
+        with f:
+            response = HTTPResponse(content_type=guess_type(path)[0] or "application/octet-stream")
+            response.headers.append(('Content-Security-Policy', "connect-src 'none'; form-action 'none';"))
+            response.headers.append(('Cache-Control', 'no-cache'))
+            response.write_bytes(f.read())
+            return response
+
+
+def upload_file(request):
+    if request.method == 'GET':
+        return default_page()
+    elif request.method == 'POST':
+        author = get_request_user(request)
+        if author is None:
+            return unauthorized()
+        date = get_request_date(request)
         f = request.files.get('file', [None])[0]
 
         filename = import_file(f.filename, f.file, author=author, author_time=date)
@@ -292,35 +334,33 @@ def upload_file(request):
 
 def default_page():
     response = HTTPResponse(content_type='text/html; charset=utf-8')
+    response.headers.append(("Vary", "Accept"))
     template = engine.get_template('main.html')
     response.write(
         template.render({
             "EDITOR": config._config.EDITOR,
             "EDITOR_URL": config.editor.url,
-            "PLUGINS": config._config.PLUGINS}))
+            "PLUGINS": config._config.MEDIA_FORMATS + config._config.PLUGINS}))
     return response
 
 def authenticate(request):
     if request.method == 'POST':
-        if check_passwd(request.form['email'], request.form['password']):
-            return json_response(request.form['email'])
+        if check_passwd(request.form['username'], request.form['password']):
+            return json_response(request.form['username'])
         return unauthorized()
     return method_not_allowed()
 
 def change_password(request):
-    token = request.environ.get("HTTP_AUTHORIZATION", '')
-    if not token.startswith('Bearer '):
-        return unauthorized()
-    email = token[7:]
-    author = formataddr((get_name(email), email))
-
     if request.method == 'POST':
-        if not check_passwd(email, request.form['password']):
+        author = get_request_user(request)
+        if author is None:
             return unauthorized()
-        date = parsedate_to_datetime(request.environ['HTTP_X_LOTEK_DATE'])
-        username, domain = email.split('@', 1)
-        replace_passwd(username, domain, request.form['new_password'], author=author, author_time=date)
-        return json_response(email)
+        date = get_request_date(request)
+
+        if not check_passwd(username, request.form['password']):
+            return unauthorized()
+        replace_passwd(username, request.form['new_password'], author=author, author_time=date)
+        return json_response(username)
     return method_not_allowed()
 
 
@@ -329,7 +369,7 @@ def annotation_redirect(request, path):
         return method_not_allowed()
     scheme = request.environ["wsgi.url_scheme"]
     host = request.environ["HTTP_HOST"]
-    prefix = f"{scheme}://{host}/files/"
+    prefix = f"{scheme}://{host}/"
 
     repo = config.repo
     commit = repo.get_latest_commit()
@@ -340,7 +380,7 @@ def annotation_redirect(request, path):
         return not_found()
     data = repo.get_data(obj)
     payload = json.loads(data)
-    return redirect(prefix + payload["uri"][1:] + "#annotations:" + path.replace("/", "-"))
+    return redirect(prefix + payload["uri"][1:] + "#annotations:" + path)
 
 def get_link(repo, commit, path):
     if os.path.basename(path).startswith("."):
@@ -351,7 +391,7 @@ def get_link(repo, commit, path):
             return
         data = repo.get_data(obj)
         payload = json.loads(data)
-        return payload["uri"][1:] + "#annotations:" + path[:-7].replace("/", "-")
+        return payload["uri"][1:].split("!", 1)[0] + "#annotations:" + path[:-7]
     else:
         return path
 
@@ -360,9 +400,9 @@ def get_authors(change_list):
         name, email = parseaddr(change["author"])
         change["author"] = {"name": name, "email": email}
 
-    names = dict(get_names(set(change["author"]["email"] for change in change_list)))
+    names = dict(get_names(set(change["author"]["email"].split("@", 1)[0] for change in change_list)))
     for change in change_list:
-        d = names.get(change["author"]["email"], None)
+        d = names.get(change["author"]["email"].split("@", 1)[0], None)
         if not d:
             continue
 
@@ -461,11 +501,13 @@ def openid_callback(request):
             email = query.get(f"openid.{ns}.email", None)
             fullname = query.get(f"openid.{ns}.fullname", None)
             if email:
-                ensure_user(email, fullname)
-                response = HTTPResponse(content_type='text/html; charset=utf-8')
-                template = engine.get_template('openid.html')
-                response.write_bytes(template.render({"token": email, "next": next}).encode())
-                return response
+                username, domain = email.split("@", 1)
+                if domain == config.DOMAIN:
+                    ensure_user(username, fullname)
+                    response = HTTPResponse(content_type='text/html; charset=utf-8')
+                    template = engine.get_template('openid.html')
+                    response.write_bytes(template.render({"token": username, "next": next}).encode())
+                    return response
     return redirect(next)
 
 
@@ -484,16 +526,19 @@ def router_middleware(options):
 urls = [
     ("/static/vendor/{name:any}", vendor_file),
     ("/static/{name:any}", static_file),
-    ("/files/{path:any}.txt", txt_file),
-    ("/files/{filename:any}", media_file),
-    ("/files/", upload_file),
-    ("/search/", search),
     ("/hypothesis/", hypothesis_urls),
+    ("/wsb/", wsb_urls),
     ("/authenticate", authenticate),
     ("/change-password", change_password),
     ("/changes", changes),
     ("/openid/redirect", openid_redirect),
-    ("/openid/callback", openid_callback)
+    ("/openid/callback", openid_callback),
+    ("/search/", search),
+    ("/{path}.txt", txt_file),
+    ("/{basename}.maff!/{path:any}", maff_file),
+    ("/~{username}", user_file),
+    ("/{filename}", media_file),
+    ("/", upload_file)
 ]
 
 router = PathRouter()

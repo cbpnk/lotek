@@ -18,7 +18,7 @@ const Milestone = {
 
         m.request(
             {method: "GET",
-             url: "/files/:path...",
+             url: "/:path",
              params: {path: vnode.attrs.path},
              responseType: "json"}
         ).then(
@@ -64,7 +64,7 @@ const Milestone = {
         return [
             m("aside.left",
               m(m.route.Link,
-                {href: m.buildPathname("/view/:path...", {path: vnode.attrs.path})},
+                {href: m.buildPathname("/:path", {path: vnode.attrs.path})},
                 "Go back")
              ),
             m("div.columns", {"style": "grid-column: 2 / span 2; margin: 1em;"},
@@ -103,7 +103,7 @@ const Kanban = {
         m.request(
             {method: "POST",
              url: "/search/",
-             body: {q: "category_i:milestone AND start_d:>=20000101 AND NOT end_d:>=20000101"}
+             body: {q: "category_i:milestone AND start_d:>=1900-01-01 AND NOT end_d:>=1900-01-01"}
             }
         ).then(
             function(result) {
@@ -134,7 +134,7 @@ const Kanban = {
         m.request(
             {method: "POST",
              url: "/search/",
-             body: {q: "category_i:card AND NOT end_d:>=20000101"}}
+             body: {q: "category_i:card AND NOT end_d:>=1900-01-01"}}
         ).then(
             function(result) {
                 const cards = Object.fromEntries(
@@ -190,7 +190,7 @@ const Kanban = {
                       m("div.card.my-2",
                         m("div.card-header",
                           m(m.route.Link,
-                            {href: m.buildPathname("/kanban/:path...", {path: milestone.path}),
+                            {href: m.buildPathname("/kanban/:path", {path: milestone.path}),
                              "class": "badge",
                              "data-badge": ((vnode.state.cards_in_milestones || {})[milestone.path] || []).length },
                               m(Title, {doc: milestone}))
@@ -222,7 +222,7 @@ const Kanban = {
                             m("div.card-header",
                               m("div.card-title",
                                 m(m.route.Link,
-                                  {href: m.buildPathname("/view/:path...", {path: card.path}),
+                                  {href: m.buildPathname("/:path...", {path: card.path}),
                                    "class": "badge",
                                    "data-badge": (card.blocker_i || []).filter((path) => path in vnode.state.cards).length || undefined
                                   },
@@ -250,13 +250,7 @@ const Kanban = {
 };
 
 function get_datestring() {
-    let date = new Date();
-    let year = date.getFullYear();
-    let month = date.getMonth() + 1;
-    let day = date.getDate();
-    let m = (month < 10)?`0${month}`:`${month}`;
-    let d = (day < 10)?`0${day}`:`${day}`;
-    return `${year}${m}${d}`;
+    return new Date().toISOString().slice(0, -1);
 }
 
 const MilestoneForm = {
@@ -387,7 +381,7 @@ const CardForm = {
               m("dd",
                 m(AutoCompleteInput,
                   {paths: vnode.attrs.doc.milestone_i,
-                   query: "category_i:milestone AND NOT end_d:>=20000101",
+                   query: "category_i:milestone AND NOT end_d:>=1900-01-01",
                    attribute: "milestone_i",
                    patch: vnode.attrs.patch,
                    popover: "popover-right",
@@ -409,7 +403,7 @@ const CardForm = {
               m("dd",
                 m(AutoCompleteInput,
                   {paths: vnode.attrs.doc.blocker_i,
-                   query: `category_i:card AND NOT end_d:>=20000101 AND NOT path:${vnode.attrs.path}`,
+                   query: `category_i:card AND NOT end_d:>=1900-01-01 AND NOT path:${vnode.attrs.path}`,
                    attribute: "blocker_i",
                    patch: vnode.attrs.patch,
                    popover: "popover-right",
@@ -492,7 +486,7 @@ const Calendar = {
         m.request(
             {method: "POST",
              url: "/search/",
-             body: {q: `category_i:card AND start_d:[TO ${get_datestring(end)}] AND (end_d:[${get_datestring(start)} TO] OR NOT end_d:[20000101 TO])`}}
+             body: {q: `category_i:card AND start_d:[TO ${get_datestring(end)}] AND (end_d:[${get_datestring(start)} TO] OR NOT end_d:[1900-01-01 TO])`}}
         ).then(
             function(result) {
                 vnode.state.cards = result;

@@ -3,7 +3,7 @@ import {get_token, set_token, clear_token} from "/static/auth.js";
 const Action = {
     oninit: function(vnode) {
         vnode.state.active = {};
-        vnode.state.email = '';
+        vnode.state.username = '';
         vnode.state.password = '';
         vnode.state.new_password = '';
         vnode.state.confirm = '';
@@ -12,7 +12,7 @@ const Action = {
 
     view: function(vnode) {
         let token = get_token();
-        let email = token;
+        let username = token;
 
         function logout() {
             clear_token();
@@ -32,8 +32,6 @@ const Action = {
         }
 
         if (token) {
-            let [username, domain] = email.split("@");
-
             function onsubmit(e) {
                 e.preventDefault();
                 if (vnode.state.new_password !== vnode.state.confirm) {
@@ -63,14 +61,14 @@ const Action = {
             }
 
             return html`
-<div class="dropdown text-left">
+<div class="dropdown dropdown-right text-left">
   <button class="btn btn-link btn-sm dropdown-toggle" tabindex="0">
-    ${ email }
+    ${ username }
     <i class="icon icon-caret" />
   </button>
   <ul class="menu">
     <li class="menu-item">
-      <${m.route.Link} href=${ m.buildPathname("/view/:path...", {path: `users/${domain}/${username}.txt`}) }>Profile<//>
+      <${m.route.Link} href=${ m.buildPathname("/~:username", {username}) }>Profile<//>
     </li>
     <li class="menu-item">
       <a onclick=${ show_modal("change-password") }>Change password</a>
@@ -116,12 +114,12 @@ const Action = {
             m.request(
                 {method: "POST",
                  url: "/authenticate",
-                 body: {email: vnode.state.email, password: vnode.state.password},
+                 body: {username: vnode.state.username, password: vnode.state.password},
                 }
             ).then(
                 function(result) {
                     set_token(result);
-                    vnode.state.email = '';
+                    vnode.state.username = '';
                     vnode.state.password = '';
                     vnode.state.active["sign-in"] = false;
                     m.redraw();
@@ -148,8 +146,8 @@ const Action = {
       <form onsubmit=${ onsubmit }>
         ${ vnode.state.error["sign-in"]?html`<div class="toast toast-error">${ vnode.state.error["sign-in"] }</div>`:null }
         <div class="form-group">
-          <label class="form-label">Email</label>
-          <input class="form-input" type="email" oninput=${ function(e) { vnode.state.email = e.target.value; } } value="${ vnode.state.email }" />
+          <label class="form-label">Username</label>
+          <input class="form-input" oninput=${ function(e) { vnode.state.username = e.target.value; } } value="${ vnode.state.username }" />
         </div>
         <div class="form-group">
           <label class="form-label">Password</label>

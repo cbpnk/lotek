@@ -1,7 +1,9 @@
 import re
-from whoosh.fields import TEXT
+from whoosh.fields import TEXT, DATETIME
 from whoosh.analysis import StandardAnalyzer, Filter, NgramFilter
 from whoosh.query import And, Or, Term, Wildcard, SpanNear2
+from whoosh.util.times import adatetime
+from datetime import datetime, timezone
 
 NGRAM = NgramFilter(2)
 CJK = re.compile(r'[\u2E80-\u9FFF\uF900-\uFAFF\uFE30-\uFE4F\U0001F200-\U0001F2FF\U00020000-\U0002FA1F]+')
@@ -100,3 +102,12 @@ class NGRAMCJKTEXT(TEXT):
             return terms[0]
         cls = Or if self.queryor else And
         return cls(terms, boost=boost)
+
+
+class ISO8601(DATETIME):
+
+    def _parse_datestring(self, qstring):
+        d = datetime.fromisoformat(qstring)
+        if d.tzinfo:
+            d = d.astimezone(timezone.utc)
+        return adatetime(d.replace(tzinfo=None))

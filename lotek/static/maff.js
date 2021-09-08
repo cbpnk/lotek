@@ -1,18 +1,12 @@
-const PDFForm = {
+const MAFFForm = {
     view: function(vnode) {
         return [
-            m(m.route.Link, {href: `/${vnode.attrs.path.slice(0,-4)}.pdf`}, "Open"),
+            m(m.route.Link, {href: `/${vnode.attrs.path.slice(0,-4)}.maff`}, "Open"),
             m("dl.text-small",
-              [["Author", "author_t"],
-               ["Keyword", "keyword_t"]].map(
-                   ([name, key]) =>
-                   [m("dt", name),
-                    (vnode.attrs.doc[key] || []).map(
-                        (item) =>
-                        m("dd.ml-2", item)
-                    )
-                   ]
-               )
+              m("dt", "Origin"),
+              m("dd.ml-2", m("a", {href: vnode.attrs.doc.originalurl_i}, vnode.attrs.doc.originalurl_i)),
+              m("dt", "Archive Time"),
+              m("dd.ml-2", vnode.attrs.doc.archive_d)
              )
         ];
     }
@@ -49,12 +43,12 @@ const View = {
 
         return [
             m("iframe",
-              {style: "grid-column: 1 / span 3; height: 100%; grid-row: 3; border: none;",
+              {style: "grid-column: 1 / span 3; height: 100%; grid-row: 3; border: 0px; padding: 0; margin: 0;",
                srcdoc: vnode.state.doc,
                onload: function(event) {
                    event.target.contentWindow.location.hash = window.location.hash;
                    const script = event.target.contentDocument.createElement("script");
-                   script.src = "/static/vendor/gh/hypothesis/via@master/via/static/vendor/pdfjs-2/web/viewer.js";
+                   script.src = event.target.contentWindow.hypothesisConfig().services[0].assetRoot + "build/boot.js";
                    event.target.contentDocument.head.appendChild(script);
                }
               }
@@ -64,13 +58,13 @@ const View = {
 };
 
 export const routes = {
-    "/:path.pdf": (vnode) => m(View, {key: m.route.get(), path: `${vnode.attrs.path}.pdf`}),
+    "/:path.maff": (vnode) => m(View, {key: m.route.get(), path: `${vnode.attrs.path}.maff`}),
 }
 
-export const searches = [{name: "PDFs", query: "category_i:pdf"}];
+export const searches = [{name: "MAFFs", query: "category_i:maff"}];
 export const categories = {
-    pdf: {
-        name: "PDF",
-        component: PDFForm,
+    maff: {
+        name: "MAFF",
+        component: MAFFForm,
         readonly: true}
 };

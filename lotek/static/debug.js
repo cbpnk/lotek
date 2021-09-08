@@ -23,6 +23,7 @@ const Debug = {
         let doc = {};
         Object.assign(doc, vnode.attrs.doc);
         delete doc.content;
+        delete doc.html;
 
         let srcdoc = `<!doctype html>
 <html class="theme-light" dir="ltr">

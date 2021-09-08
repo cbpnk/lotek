@@ -15,7 +15,7 @@
 var hypothesisConfig = function() {
     return {
         services: [{
-            apiUrl: `${window.location.protocol}//${window.location.host}/hypothesis/api/`,
+            apiUrl: `${window.parent.location.protocol}//${window.parent.location.host}/hypothesis/api/`,
             grantToken: localStorage.getItem('token'),
             sentry: {"enabled": false},
             assetRoot: "/static/vendor/npm/hypothesis@@1.810.0/",
@@ -25,7 +25,7 @@ var hypothesisConfig = function() {
 </script>
 
 <script>
-var PDF_URL = `${window.location.protocol}//${window.location.host}${window.location.pathname}`;
+var PDF_URL = `${window.parent.location.protocol}//${window.parent.location.host}${window.parent.location.pathname}`;
 var PROXY_PDF_URL = PDF_URL;
 var CLIENT_EMBED_URL = '/static/vendor/npm/hypothesis@@1.810.0/build/boot.js';
 
@@ -42,8 +42,6 @@ document.addEventListener(
 <script src="/static/vendor/gh/hypothesis/via@@master/via/static/js/pdfjs-init.js"></script>
 <link rel="resource" type="application/l10n" href="/static/vendor/gh/hypothesis/via@@master/via/static/vendor/pdfjs-2/web/locale/locale.properties">
 <script src="/static/vendor/gh/hypothesis/via@@master/via/static/vendor/pdfjs-2/build/pdf.js"></script>
-<script src="/static/vendor/gh/hypothesis/via@@master/via/static/vendor/pdfjs-2/web/viewer.js"></script>
-
 </head>
 
 <body tabindex="1" class="loadingInProgress">

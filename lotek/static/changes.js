@@ -6,10 +6,7 @@ const icons = {
 
 function format_link(item) {
     if (item.link) {
-        if (item.link.endsWith(".txt")) {
-            return m(m.route.Link, {href: "/view/" + item.link}, item.title || item.path);
-        }
-        return m("a", {href: "/files/" + item.link}, item.title || item.path)
+        return m(m.route.Link, {href: "/" + item.link}, item.title || item.path);
     } else {
         return m("span", item.path)
     }
@@ -18,7 +15,7 @@ function format_link(item) {
 function format_author(author) {
     if (author.path) {
         return m(m.route.Link,
-                 {href: m.buildPathname("/view/:path...", {path: author.path})},
+                 {href: m.buildPathname("/:path...", {path: author.path})},
                   author.name)
     }
     return m("span", author.name, " <", author.email, ">")
@@ -48,7 +45,7 @@ const Changes = {
        (change) => html`
 <div class="timeline-item">
   <div class="timeline-left">
-    <span class="timeline-icon.icon-lg">
+    <span class="timeline-icon icon-lg">
       <i class="icon" />
     </span>
   </div>

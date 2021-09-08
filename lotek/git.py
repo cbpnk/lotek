@@ -1,5 +1,35 @@
 import os
 
+def split_filename(filename):
+    if filename.startswith("."):
+        yield filename
+        return
+
+    if filename.startswith("~"):
+        yield "users"
+        yield filename[1:]
+        return
+
+    basename, ext = os.path.splitext(filename)
+
+    for i in range(2):
+        if len(basename) < 3:
+            break
+        yield basename[:3]
+        basename = basename[3:]
+
+    yield basename + ext
+
+def join_filename(filename):
+    if filename.startswith("."):
+        return filename
+
+    if filename.startswith("users/"):
+        return "~"+filename[6:]
+
+    return filename.replace("/", "")
+
+
 class GitRepo:
 
     def __init__(self, config):
@@ -36,7 +66,7 @@ class GitRepo:
         new_tree = self.repo[new_commit].tree
 
         for (oldpath, newpath), (oldmode, newmode), (oldsha, newsha) in self.repo.object_store.tree_changes(old_tree, new_tree):
-            yield newpath.decode(), self.repo[newsha].data.decode(), oldsha is None
+            yield join_filename(newpath.decode()), self.repo[newsha].data.decode(), oldsha is None
 
     def changes(self):
         for entry in self.repo.get_walker(max_entries=50):
@@ -46,7 +76,7 @@ class GitRepo:
             new_tree = entry.commit.tree
 
             changes = [
-                {"type": change.type, "path": change.new.path.decode()}
+                {"type": change.type, "path": join_filename(change.new.path.decode())}
                 for change in entry.changes()]
 
             yield {
@@ -61,12 +91,11 @@ class GitRepo:
         from dulwich.objects import Tree
         from dulwich.errors import NotTreeError
 
-        filename = filename.encode()
-
         if commit is not None:
             sha = self.repo[commit].tree
 
-            for part in filename.split(b"/"):
+            for part in split_filename(filename):
+                part = part.encode()
                 tree = self.repo[sha]
                 if not isinstance(tree, Tree):
                     raise NotTreeError()
@@ -84,24 +113,25 @@ class GitRepo:
         tree = Tree()
         if old_tree is not None:
             for name, mode, sha in old_tree.items():
-                if name == parts[0]:
+                if name == parts[0].encode():
                     continue
                 tree.add(name, mode, sha)
         if len(parts) == 1:
             blob = Blob.from_string(content)
             self.repo.object_store.add_object(blob)
-            tree.add(parts[0], 0o100644, blob.id)
+            tree.add(parts[0].encode(), 0o100644, blob.id)
             if mediafile:
-                blob = Blob.from_string(os.path.relpath(f".git/media/{mediafile}", os.path.dirname(mediafile)).encode())
+                mediafile = os.path.join(*split_filename(mediafile))
+                blob = Blob.from_string(os.path.relpath(os.path.join(".git/media", mediafile), os.path.dirname(mediafile)).encode())
                 self.repo.object_store.add_object(blob)
                 tree.add(os.path.basename(mediafile).encode(), 0o120000, blob.id)
         else:
             old_subtree = None
-            if old_tree is not None and parts[0] in old_tree:
-                mode, sha = old_tree[parts[0]]
+            if old_tree is not None and parts[0].encode() in old_tree:
+                mode, sha = old_tree[parts[0].encode()]
                 old_subtree = self.repo[sha]
             subtree = self._replace_content(old_subtree, parts[1:], content, mediafile)
-            tree.add(parts[0], 0o040000, subtree.id)
+            tree.add(parts[0].encode(), 0o040000, subtree.id)
         self.repo.object_store.add_object(tree)
         return tree
 
@@ -110,13 +140,12 @@ class GitRepo:
         from dulwich.repo import get_user_identity
         from dulwich.object_store import commit_tree_changes
         import time
-        filename = filename.encode()
         message = message.encode()
 
         old_tree = None
         if commit is not None:
             old_tree = self.repo[self.repo[commit].tree]
-        tree = self._replace_content(old_tree, filename.split(b"/"), content, mediafile)
+        tree = self._replace_content(old_tree, list(split_filename(filename)), content, mediafile)
         config = self.repo.get_config()
 
         new_commit = Commit()
@@ -169,4 +198,4 @@ class GitRepo:
 
     def file_path(self, filename):
         basedir = self.repo.controldir()
-        return os.path.join(basedir, 'media', filename)
+        return os.path.join(basedir, 'media', *split_filename(filename))

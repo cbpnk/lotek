@@ -3,7 +3,7 @@ const Widget = {
         function onclick() {
             m.request(
                 {method: "OPEN",
-                 url: `/files/${vnode.attrs.path.slice(0,-4)}.pdf`
+                 url: `/${vnode.attrs.path.slice(0,-4)}.pdf`
                 }
             );
         }

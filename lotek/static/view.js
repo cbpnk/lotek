@@ -14,7 +14,7 @@ const View = {
         vnode.state.doc = false;
         m.request(
             {method: "GET",
-             url: "/files/:path...",
+             url: "/:path...",
              params: {path: vnode.attrs.path},
              responseType: "json",
              extract: function(xhr) { return {etag: xhr.getResponseHeader("ETag"), response: xhr.response}; }}
@@ -47,7 +47,7 @@ const View = {
         function save() {
             m.request(
                 {method: "POST",
-                 url: "/files/:path...",
+                 url: "/:path",
                  params: {path: vnode.attrs.path},
                  headers: {'X-Lotek-Date': (new Date()).toUTCString(),
                            'Authorization': `Bearer ${token}`},
@@ -69,7 +69,7 @@ const View = {
         function patch(body) {
             return m.request(
                 {method: "PATCH",
-                 url: "/files/:path...",
+                 url: "/:path",
                  params: {path: vnode.attrs.path},
                  headers: {'If-Match': vnode.state.etag,
                            'X-Lotek-Date': (new Date()).toUTCString(),
@@ -108,10 +108,21 @@ const View = {
         return [
             m("main",
               m("iframe",
-                {style: `margin: 0; border: 0; padding: 0; width: 100%; height: 100%;`,
-                 src: m.buildPathname("/files/:path...", {path: vnode.attrs.path}),
+                {style: "margin: 0; border: 0; padding: 0; width: 100%; min-height: calc(100% - 2em);",
+                 onload: function(event) {
+                     event.target.contentWindow.location.hash = window.location.hash;
+                     if (event.target.scrollHeight < event.target.contentDocument.body.scrollHeight) {
+                         event.target.style.height = event.target.contentDocument.body.scrollHeight + "px";
+                     }
+                     const script = event.target.contentDocument.createElement("script");
+                     script.src = event.target.contentWindow.hypothesisConfig().services[0].assetRoot + "build/boot.js";
+                     event.target.contentDocument.head.appendChild(script);
+
+                 },
+                 srcdoc: vnode.state.doc.html,
                  key: token || "anonymous"
-                })
+                }
+               )
              ),
             [
              ["aside.top", registry.top_widgets],
@@ -133,7 +144,8 @@ const View = {
 };
 
 export const routes = {
-    "/view/:path...": (vnode) => m(View, {key: m.route.get(), path: vnode.attrs.path})
+    "/:path.txt": (vnode) => m(View, {key: m.route.get(), path: `${vnode.attrs.path}.txt`}),
+    "/~:username": (vnode) => m(View, {key: m.route.get(), path: `~${vnode.attrs.username}`})
 };
 
 
@@ -159,12 +171,12 @@ export const Link = {
         const path = vnode.attrs.doc.path;
         if (path.includes("#")) {
             return m("a",
-                     {href: '/files/' + path,
+                     {href: '/' + path,
                       "class": vnode.attrs.class},
                      (vnode.attrs.doc.title_t || [path])[0]);
         }
         return m(m.route.Link,
-                 {href: m.buildPathname("/view/:path...", {path: path}),
+                 {href: m.buildPathname("/:path", {path: path}),
                   "class": vnode.attrs.class},
                  (vnode.attrs.doc.title_t || [path])[0]);
     }

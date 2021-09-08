@@ -1,4 +1,5 @@
 from getpass import getpass
+from email.utils import formataddr
 from .config import config
 from .index import spawn_indexer
 from .utils import create_new_txt
@@ -8,10 +9,10 @@ def mkpasswd(plaintext, crypted=None):
     method = getattr(config._config, 'CRYPT_METHOD', METHOD_BLOWFISH)
     return crypt(plaintext, crypted or mksalt(method))
 
-def replace_passwd(username, domain, password, **kwargs):
+def replace_passwd(username, password, **kwargs):
     passwd = mkpasswd(password)
     repo = config.repo
-    filename = f"users/{domain}/.htpasswd"
+    filename = f".htpasswd"
     while True:
         commit = repo.get_latest_commit()
         users = {}
@@ -25,53 +26,46 @@ def replace_passwd(username, domain, password, **kwargs):
         users[username] = passwd
         content = ''.join(f"{a}:{b}\n" for a, b in sorted(users.items()))
 
-        commit = repo.replace_content(commit, filename, content.encode(), f"Update password of {username}@{domain}", **kwargs)
+        commit = repo.replace_content(commit, filename, content.encode(), f"Update password of {username}", **kwargs)
         if commit:
             break
 
 
 def run_useradd():
     from .index import run_indexer
-    email = input("Email: ")
-    username, domain = email.split('@', 1)
+    username = input("User: ")
     name = input("Name: ") or username
     password = getpass("Password: ")
     confirm = getpass("Confirm: ")
     assert password == confirm
 
-    filename = f"users/{domain}/{username}.txt"
+    filename = f"~{username}"
     meta = {"title_t": [name], "category_i": ["user"]}
     assert create_new_txt(filename, meta), "user already exist"
-    replace_passwd(username, domain, password)
+    replace_passwd(username, password)
     run_indexer()
 
-def ensure_user(email, fullname):
-    username, domain = email.split('@', 1)
+def ensure_user(username, fullname):
     name = fullname or username
-    filename = f"users/{domain}/{username}.txt"
+    filename = f"~{username}"
     meta = {"title_t": [name], "category_i": ["user"]}
     create_new_txt(filename, meta)
     from .index import spawn_indexer
     spawn_indexer()
 
 
-def run_passwd(email):
-    username, domain = email.split('@', 1)
+def run_passwd(username):
     password = getpass("Password: ")
     confirm = getpass("Confirm: ")
     assert password == confirm
-    replace_passwd(username, domain, password)
+    replace_passwd(username, password)
 
-def check_passwd(email, password):
-    try:
-        username, domain = email.split('@', 1)
-    except ValueError:
-        return False
+def check_passwd(username, password):
     repo = config.repo
     commit = repo.get_latest_commit()
     if not commit:
         return False
-    filename = f"users/{domain}/.htpasswd"
+    filename = f".htpasswd"
     obj = repo.get_object(commit, filename)
     if not obj:
         return False
@@ -85,12 +79,11 @@ def check_passwd(email, password):
 
     return mkpasswd(password, users[username]) == users[username]
 
-def get_name(email):
-    username, domain = email.split('@', 1)
+def get_name(username):
     repo = config.repo
     parser = config.parser
     commit = repo.get_latest_commit()
-    filename = f"users/{domain}/{username}.txt"
+    filename = f"~{username}"
     obj = repo.get_object(commit, filename)
     if obj is None:
         return
@@ -98,20 +91,26 @@ def get_name(email):
     return metadata.get("title_t", [None])[0]
 
 
-def get_names(email_list):
-    if not email_list:
+def get_addr(username):
+    name = get_name(username)
+    if name is None:
+        return
+    return formataddr((name, f"{username}@{config.DOMAIN}"))
+
+def get_names(username_list):
+    if not username_list:
         return
     from whoosh.query import Or, Term
     terms = [
-        Term("path", "users/{1}/{0}.txt".format(*email.split('@', 1)))
-        for email in email_list]
+        Term("path", f"~{username}")
+        for username in username_list]
     q = Or(terms)
 
     for hit in config.index.search(q, limit=len(terms)):
         path = hit["path"]
-        domain, username = path[6:-4].split("/")
+        username = path[1:]
         d = {"path": path}
         name = hit.get("title_t", [None])[0]
         if name:
             d["name"] = name
-        yield f"{username}@{domain}", d
+        yield username, d

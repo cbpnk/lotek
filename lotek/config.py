@@ -20,6 +20,15 @@ class Config:
         self.CONFIG_FILE = mod.__file__
         self.STATIC_ROOT = mod.STATIC_ROOT
         self.CACHE_ROOT = mod.CACHE_ROOT
+        self.DOMAIN = mod.DOMAIN
+
+    @cached_property
+    def media_formats(self):
+        formats = {}
+        for f in self._config.MEDIA_FORMATS:
+            mod = load_entry_point(f"{__package__}_media_formats", f)
+            formats[mod.EXT] = mod
+        return formats
 
     @cached_property
     def repo(self):
@@ -54,10 +63,12 @@ def load_config(filename):
     d.setdefault('PLUGINS', ['user', 'media', 'link', 'tag', 'kanban', 'debug'])
     d.setdefault('EDITOR', 'textarea')
     d.setdefault('TXT_FORMAT', 'markdown')
+    d.setdefault('MEDIA_FORMATS', ['pdf', 'maff'])
     d.setdefault('REPO_ROOT', 'git')
     d.setdefault('INDEX_ROOT', 'index')
     d.setdefault('STATIC_ROOT', 'static')
     d.setdefault('CACHE_ROOT', 'static')
+    d.setdefault('DOMAIN', 'localhost')
     d.setdefault('__file__', None)
     return Config(mod)
 

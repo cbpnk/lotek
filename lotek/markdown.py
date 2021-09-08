@@ -16,7 +16,7 @@ def find_title(path):
 def build_link(target, text=None):
     if not text:
         text = find_title(target) or target
-    return f"/view/{target}" , text
+    return f"/{target}" , text
 
 class WikiLinks(InlineProcessor):
 
@@ -92,7 +92,8 @@ class MarkdownParser:
                 'pymdownx.emoji',
                 'attr_list',
                 'fenced_code',
-                WikiLinkExtension()],
+                WikiLinkExtension(),
+                CollectTasklistExtension()],
             extension_configs = {
                 'pymdownx.tasklist': {
                     "custom_checkbox": True

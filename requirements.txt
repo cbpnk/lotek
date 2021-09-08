@@ -9,3 +9,4 @@ pyuwsgi
 pdfminer.six
 pymdown-extensions
 Pygments
+pyjwt

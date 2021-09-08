@@ -27,7 +27,11 @@ setup(
         ],
         'lotek_txt_formats':
         [ 'markdown = lotek.markdown:MarkdownParser',
-        ]
+        ],
+        'lotek_media_formats':
+        [ 'pdf = lotek.pdf',
+          'maff = lotek.maff',
+        ],
     },
     install_requires = [
         'dulwich',

@@ -16,19 +16,19 @@ const Action = {
         }
 
         function random_name() {
-            return random_char() + random_char() + random_char();
+            return random_char() + random_char() + random_char() + random_char() + random_char() + random_char() + random_char() + random_char() + random_char();
         }
 
         function create_new_file() {
-            const path = `${random_name()}/${random_name()}/${random_name()}.txt`;
+            const path = `${random_name()}.txt`;
             m.request(
                 {method: "PUT",
-                 url: m.buildPathname("/files/:path...", {path}),
+                 url: m.buildPathname("/:path", {path}),
                  headers: {'X-Lotek-Date': (new Date()).toUTCString(),
                            'Authorization': `Bearer ${token}`}}
             ).then(
                 function (result) {
-                    m.route.set(m.buildPathname("/view/:path...", {path}));
+                    m.route.set(m.buildPathname("/:path", {path}));
                 },
                 function (error) {
                     if (error.code === 409) {
@@ -45,7 +45,7 @@ const Action = {
             body.append("file", file);
             m.request({
                 method: "POST",
-                url: "/files/",
+                url: "/",
                 body: body,
                 config: function(xhr) {
                     xhr.upload.addEventListener(
@@ -62,7 +62,7 @@ const Action = {
                 function(path) {
                     vnode.state.active = false;
                     vnode.state.uploading = false;
-                    m.route.set(m.buildPathname("/view/:path...", {path}));
+                    m.route.set(m.buildPathname("/:path", {path}));
                 }
             );
 

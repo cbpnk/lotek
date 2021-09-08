@@ -77,7 +77,7 @@ export const AutoCompleteInput = {
 <div class="my-2">
   <div class="popover ${ vnode.attrs.popover }">
     <span class="chip">
-      <${m.route.Link} href=${ m.buildPathname("/view/:path...", {path}) }>
+      <${m.route.Link} href=${ m.buildPathname("/:path", {path}) }>
         <${Title} path=${path} doc=${ vnode.state.items[path] }><//>
       <//>
     </span>

@@ -3,8 +3,7 @@ import json
 from datetime import datetime
 from random import choices
 from urllib.parse import parse_qs
-from email.utils import formataddr
-from .accounts import get_name, get_names
+from .accounts import get_name, get_addr, get_names
 from .config import config
 from .index import spawn_indexer
 
@@ -199,15 +198,15 @@ def api_profile(request):
     token = request.environ.get("HTTP_AUTHORIZATION", '')
     if not token.startswith('Bearer '):
         return unauthorized()
-    host = request.environ['HTTP_HOST']
+    # host = request.environ['HTTP_HOST']
     response = HTTPResponse(content_type='application/json')
-    email = token[7:]
+    username = token[7:]
     response.write(json.dumps(
-        {"authority": host,
+        {"authority": config.DOMAIN,
          "features": {},
          "preferences": {},
-         "userid": f"acct:{email}",
-         "user_info": {"display_name": get_name(email)}
+         "userid": f"acct:{username}@{config.DOMAIN}",
+         "user_info": {"display_name": get_name(username)}
         }))
     return response
 
@@ -220,6 +219,7 @@ def normalize_annotation(payload, id, prefix, user_info=True):
     reconstruct_link(payload, "uri", prefix)
     for target in payload["target"]:
         reconstruct_link(target, "source", prefix)
+    reconstruct_link(payload.get("document", {}), "favicon", prefix)
     for link in payload.get("document", {}).get("link", []):
         reconstruct_link(link, "href", prefix)
     payload["permissions"] = {
@@ -227,13 +227,13 @@ def normalize_annotation(payload, id, prefix, user_info=True):
         "update": [payload["user"]],
         "delete": [payload["user"]]
     }
-    payload["id"] = id.replace("/", "-")
-    email = payload["user"][5:]
+    payload["id"] = id
+    username = payload["user"][5:].split("@", 1)[0]
     if user_info:
-        payload["user_info"] = {"display_name":  get_name(email)}
+        payload["user_info"] = {"display_name":  get_name(username)}
 
 def get_row(hit, repo, commit, prefix):
-    path = hit["path"].split("#annotations:", 1)[1].replace("-", "/")+".h.json"
+    path = hit["path"].split("#annotations:", 1)[1]+".h.json"
     obj = repo.get_object(commit, path)
     data = repo.get_data(obj)
     payload = json.loads(data)
@@ -245,7 +245,7 @@ def api_search(request):
 
     scheme = request.environ["wsgi.url_scheme"]
     host = request.environ["HTTP_HOST"]
-    prefix = f"{scheme}://{host}/files/"
+    prefix = f"{scheme}://{host}/"
 
     qs = parse_qs(request.environ["QUERY_STRING"])
 
@@ -265,12 +265,12 @@ def api_search(request):
 
     rows = [get_row(hit, repo, commit, prefix) for hit in config.index.search(q, sortedby="created_d", limit=None)]
 
-    emails = {email:d["name"]
-              for email, d in get_names(set(row["user"][5:] for row in rows))
+    usernames = {username:d["name"]
+              for username, d in get_names(set(row["user"][5:].split("@", 1)[0] for row in rows))
               if "name" in d}
 
     for row in rows:
-        row["user_info"] = {"display_name": emails.get(row["user"][5:], None)}
+        row["user_info"] = {"display_name": usernames.get(row["user"][5:].split("@", 1)[0], None)}
 
     response = HTTPResponse(content_type='application/json')
     response.write(json.dumps(
@@ -286,12 +286,13 @@ def rewrite_link(obj, key, prefix):
 
 
 def random_name():
-    return ''.join(choices('0123456789abcdef', k=3))
+    return ''.join(choices('0123456789abcdef', k=9))
 
 def clean_annotation(payload, prefix):
     rewrite_link(payload, "uri", prefix)
     for target in payload["target"]:
         rewrite_link(target, "source", prefix)
+    rewrite_link(payload.get("document", {}), "favicon", prefix)
     for link in payload.get("document", {}).get("link", []):
         rewrite_link(link, "href", prefix)
     created = payload["created"]
@@ -306,18 +307,18 @@ def clean_annotation(payload, prefix):
 def api_annotation_create(request):
     scheme = request.environ["wsgi.url_scheme"]
     host = request.environ["HTTP_HOST"]
-    prefix = f"{scheme}://{host}/files/"
+    prefix = f"{scheme}://{host}/"
 
     payload = json.loads(request.stream.read(request.content_length))
     clean_annotation(payload, prefix)
     date = datetime.fromisoformat(payload['created'])
     content = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(',',':'))
-    email = payload["user"][5:]
-    author = formataddr((get_name(email), email))
+    username = payload["user"][5:].split("@", 1)[0]
+    author = get_addr(username)
 
     repo = config.repo
     while True:
-        filename = f'{random_name()}/{random_name()}/{random_name()}.h.json'
+        filename = f'{random_name()}.h.json'
         commit = repo.get_latest_commit()
         if repo.get_object(commit, filename) is not None:
             continue
@@ -329,18 +330,18 @@ def api_annotation_create(request):
     return json_response(payload)
 
 def api_annotation(request, id):
-    filename = id.replace("-", "/") + ".h.json"
+    filename = id + ".h.json"
     if request.method in ("PUT", "PATCH"):
         scheme = request.environ["wsgi.url_scheme"]
         host = request.environ["HTTP_HOST"]
-        prefix = f"{scheme}://{host}/files/"
+        prefix = f"{scheme}://{host}/"
 
         payload = json.loads(request.stream.read(request.content_length))
         clean_annotation(payload, prefix)
         date = datetime.fromisoformat(payload['updated'])
         content = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(',',':'))
-        email = payload["user"][5:]
-        author = formataddr((get_name(email), email))
+        username = payload["user"][5:].split("@", 1)[0]
+        author = get_addr(username)
 
         repo = config.repo
         while True:

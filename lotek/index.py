@@ -55,19 +55,19 @@ def run_indexer():
     from whoosh import formats
     formats.tokens = tokens
 
-    from .fields import NGRAMCJKTEXT
+    from .fields import NGRAMCJKTEXT, ISO8601
 
     try:
         ix = open_dir(INDEX_ROOT)
     except EmptyIndexError:
-        from whoosh.fields import Schema, ID, NUMERIC, DATETIME
+        from whoosh.fields import Schema, ID, NUMERIC
         schema = Schema(
             path=ID(unique=True, stored=True),
             content=NGRAMCJKTEXT(stored=True))
         schema.add("*_i", ID(stored=True), glob=True)
         schema.add("*_t", NGRAMCJKTEXT(stored=True), glob=True)
         schema.add("*_n", NUMERIC(stored=True), glob=True)
-        schema.add("*_d", DATETIME(stored=True), glob=True)
+        schema.add("*_d", ISO8601(stored=True), glob=True)
         os.makedirs(INDEX_ROOT, exist_ok=True)
         ix = create_in(INDEX_ROOT, schema)
 
@@ -92,7 +92,7 @@ def run_indexer():
                     date = datetime.fromisoformat(annotation["created"]).astimezone(timezone.utc)
                     func = writer.add_document if is_new else writer.update_document
                     basepath = annotation["uri"][1:] + "#annotations:"
-                    annotation_id = path[:-7].replace("/", "-")
+                    annotation_id = path[:-7]
 
                     func(
                         path=basepath + annotation_id,
@@ -104,7 +104,7 @@ def run_indexer():
                         reference_i=[basepath+r for r in annotation.get("references", [])],
                         uri_i=[annotation["uri"]]+[link["href"] for link in annotation.get("document", {}).get("link", [])]
                     )
-                elif path.endswith(".txt"):
+                elif path.endswith(".txt") or path.startswith("~"):
                     metadata, html = parser.convert(content)
                     func = writer.add_document if is_new else writer.update_document
                     func(path=path, **metadata)

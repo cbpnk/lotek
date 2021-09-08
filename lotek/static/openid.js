@@ -3,7 +3,7 @@ import {get_token, clear_token} from "/static/auth.js";
 const Action = {
     view: function(vnode) {
         let token = get_token();
-        let email = token;
+        let username = token;
 
         function logout() {
             clear_token();
@@ -11,16 +11,15 @@ const Action = {
         }
 
         if (token) {
-            let [username, domain] = email.split("@");
             return html`
 <div class="dropdown text-left">
   <button class="btn btn-link btn-sm dropdown-toggle" tabindex="0">
-    ${ email }
+    ${ username }
     <i class="icon icon-caret" />
   </button>
   <ul class="menu">
     <li class="menu-item">
-      <${m.route.Link} href="${ m.buildPathname("/view/:path...", {path: `users/${domain}/${username}.txt`}) }">Profile<//>
+      <${m.route.Link} href="${ m.buildPathname("/~:username", {username}) }">Profile<//>
     </li>
     <li class="menu-item"><a onclick=${ logout }>Sign out</a></li>
   </ul>
