@@ -2,9 +2,9 @@ const MAFFForm = {
     view: function(vnode) {
         return m("dl.text-small",
                  m("dt", "Origin"),
-                 m("dd.ml-2", m("a", {href: vnode.attrs.doc.originalurl_i}, vnode.attrs.doc.originalurl_i)),
+                 m("dd.ml-2", m("a", {href: vnode.attrs.doc.maff__originalurl_i}, vnode.attrs.doc.maff__originalurl_i)),
                  m("dt", "Archive Time"),
-                 m("dd.ml-2", vnode.attrs.doc.archive_d)
+                 m("dd.ml-2", vnode.attrs.doc.maff__archive_d)
                 );
     }
 }

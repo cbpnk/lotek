@@ -3,7 +3,7 @@ import {Link, Title} from "/static/view.js";
 
 
 function is_blocked(card, cards) {
-    for (let path of (card.blocker_i || [])) {
+    for (let path of (card.card__blocker_i || [])) {
         if (path in cards) {
             return true;
         }
@@ -33,7 +33,7 @@ const Milestone = {
         m.request(
             {method: "POST",
              url: "/search/",
-             body: {q: `category_i:card AND milestone_i:${vnode.attrs.path}`}}
+             body: {q: `category_i:card AND card__milestone_i:${vnode.attrs.path}`}}
         ).then(
             function(result) {
                 vnode.state.cards_in_backlog = [];
@@ -42,11 +42,11 @@ const Milestone = {
                 vnode.state.cards_in_done = [];
 
                 for (let card of result) {
-                    if (card.end_d) {
+                    if (card.card__end_d) {
                         vnode.state.cards_in_done.push(card);
-                    } else if (card.start_d) {
+                    } else if (card.card__start_d) {
                         vnode.state.cards_in_wip.push(card);
-                    } else if (card.schedule_d) {
+                    } else if (card.card__schedule_d) {
                         vnode.state.cards_in_inbox.push(card);
                     } else {
                         vnode.state.cards_in_backlog.push(card);
@@ -103,7 +103,7 @@ const Kanban = {
         m.request(
             {method: "POST",
              url: "/search/",
-             body: {q: "category_i:milestone AND start_d:>=1900-01-01 AND NOT end_d:>=1900-01-01"}
+             body: {q: "category_i:milestone AND milestone__start_d:>=1900-01-01 AND NOT milestone__end_d:>=1900-01-01"}
             }
         ).then(
             function(result) {
@@ -134,7 +134,7 @@ const Kanban = {
         m.request(
             {method: "POST",
              url: "/search/",
-             body: {q: "category_i:card AND NOT end_d:>=1900-01-01"}}
+             body: {q: "category_i:card AND NOT card__end_d:>=1900-01-01"}}
         ).then(
             function(result) {
                 const cards = Object.fromEntries(
@@ -149,18 +149,18 @@ const Kanban = {
                 vnode.state.cards_in_blocked = [];
 
                 for (let card of result) {
-                    if (card.start_d) {
+                    if (card.card__start_d) {
                         if (is_blocked(card, cards)) {
                             vnode.state.cards_in_blocked.push(card);
                         } else {
                             vnode.state.cards_in_wip.push(card);
                         }
-                    } else if (card.schedule_d) {
+                    } else if (card.card__schedule_d) {
                         vnode.state.cards_in_inbox.push(card);
-                    } else if (card.milestone_i) {
-                        for (let milestone_i of card.milestone_i) {
-                            vnode.state.cards_in_milestones[milestone_i] = vnode.state.cards_in_milestones[milestone_i] || [];
-                            vnode.state.cards_in_milestones[milestone_i].push(card);
+                    } else if (card.card__milestone_i) {
+                        for (let milestone_i of card.card__milestone_i) {
+                            vnode.state.cards_in_milestones[card__milestone_i] = vnode.state.cards_in_milestones[card__milestone_i] || [];
+                            vnode.state.cards_in_milestones[card__milestone_i].push(card);
                         }
                     } else {
                         vnode.state.cards_in_backlog.push(card);
@@ -224,18 +224,18 @@ const Kanban = {
                                 m(m.route.Link,
                                   {href: m.buildPathname("/:path...", {path: card.path}),
                                    "class": "badge",
-                                   "data-badge": (card.blocker_i || []).filter((path) => path in vnode.state.cards).length || undefined
+                                   "data-badge": (card.card__blocker_i || []).filter((path) => path in vnode.state.cards).length || undefined
                                   },
                                   m(Title, {doc: card})))
                                ),
                               m("div.card-subtitle",
-                                (card.milestone_i || [])
+                                (card.card__milestone_i || [])
                                 .filter((path) => path in vnode.state.milestones_by_path)
                                 .map((path) => m("span.chip", m(Title, {doc: vnode.state.milestones_by_path[path]})))
                                ),
                             m("div.card-body",
                               (!vnode.state.operators)?m("div.loading"):
-                              (card.operator_i || [])
+                              (card.card__operator_i || [])
                               .map((path) => m("span.chip", m(Title, {doc: vnode.state.operators[path]})))
                              )
                            )
@@ -256,20 +256,20 @@ function get_datestring() {
 const MilestoneForm = {
     view: function(vnode) {
         let doc = vnode.attrs.doc;
-        let started = ((doc.start_d || []).length > 0);
-        let ended = ((doc.end_d || []).length > 0);
+        let started = ((doc.milestone__start_d || []).length > 0);
+        let ended = ((doc.milestone__end_d || []).length > 0);
 
         function start() {
             vnode.attrs.patch(
-                [{op: "add", path: "/start_d", value: [get_datestring()]}]
+                [{op: "add", path: "/milestone__start_d", value: [get_datestring()]}]
             );
         }
 
         function end() {
             const datestring = get_datestring();
-            let patch = [{op: "add", path: "/end_d", value: [datestring]}];
+            let patch = [{op: "add", path: "/milestone__end_d", value: [datestring]}];
             if (!started) {
-                patch.push({op: "add", path: "/start_d", value: [datestring]});
+                patch.push({op: "add", path: "/milestone__start_d", value: [datestring]});
             }
             vnode.attrs.patch(patch);
         }
@@ -278,16 +278,16 @@ const MilestoneForm = {
             m("dl.text-small",
               m("dt", "Start Date"),
               m("dd",
-                started?doc.start_d[0]:vnode.attrs.patch?m("button.btn.btn-sm.btn-primary", {onclick: start}, "Start"):"N/A"),
+                started?doc.milestone__start_d[0]:vnode.attrs.patch?m("button.btn.btn-sm.btn-primary", {onclick: start}, "Start"):"N/A"),
               m("dt", "End Date"),
               m("dd",
-                ended?doc.end_d[0]:vnode.attrs.patch?m("button.btn.btn-sm.btn-primary", {onclick: end}, "End"):"N/A"),
+                ended?doc.milestone__end_d[0]:vnode.attrs.patch?m("button.btn.btn-sm.btn-primary", {onclick: end}, "End"):"N/A"),
               m("dt", "Project"),
               m("dd",
                 m(AutoCompleteInput,
-                  {paths: vnode.attrs.doc.project_i,
+                  {paths: vnode.attrs.doc.milestone__project_i,
                    query: "category_i:project",
-                   attribute: "project_i",
+                   attribute: "milestone__project_i",
                    patch: vnode.attrs.patch,
                    popover: "popover-right",
                   }
@@ -295,7 +295,7 @@ const MilestoneForm = {
                ),
               m("div.form-group",
                 m(m.route.Link,
-                  {href: m.buildPathname("/kanban/:path...", {path: vnode.attrs.path})},
+                  {href: m.buildPathname("/kanban/:path", {path: vnode.attrs.path})},
                   "Kanban View")
                )
              )
@@ -308,7 +308,7 @@ const ProjectForm = {
         m.request(
             {method: "POST",
              url: "/search/",
-             body: {q: `category_i:milestone project_i:${vnode.attrs.path}`}}
+             body: {q: `category_i:milestone milestone__project_i:${vnode.attrs.path}`}}
         ).then(
             function(result) {
                 vnode.state.milestones = result;
@@ -335,33 +335,33 @@ const CardForm = {
     view: function(vnode) {
         let doc = vnode.attrs.doc;
 
-        let scheduled = ((doc.schedule_d || []).length > 0);
-        let started = ((doc.start_d || []).length > 0);
-        let ended = ((doc.end_d || []).length > 0);
+        let scheduled = ((doc.card__schedule_d || []).length > 0);
+        let started = ((doc.card__start_d || []).length > 0);
+        let ended = ((doc.card__end_d || []).length > 0);
 
         function schedule() {
             vnode.attrs.patch(
-                [{op: "add", path: "/schedule_d", value: [get_datestring()]}]
+                [{op: "add", path: "/card__schedule_d", value: [get_datestring()]}]
             );
         }
 
         function start() {
             const datestring = get_datestring();
-            let patch = [{op: "add", path: "/start_d", value: [datestring]}];
+            let patch = [{op: "add", path: "/card__start_d", value: [datestring]}];
             if (!scheduled) {
-                patch.push({op: "add", path: "/schedule_d", value: [datestring]});
+                patch.push({op: "add", path: "/card__schedule_d", value: [datestring]});
             }
             vnode.attrs.patch(patch);
         }
 
         function end() {
             const datestring = get_datestring();
-            let patch = [{op: "add", path: "/end_d", value: [datestring]}];
+            let patch = [{op: "add", path: "/card__end_d", value: [datestring]}];
             if (!started) {
-                patch.push({op: "add", path: "/start_d", value: [datestring]});
+                patch.push({op: "add", path: "/card__start_d", value: [datestring]});
             }
             if (!scheduled) {
-                patch.push({op: "add", path: "/schedule_d", value: [datestring]});
+                patch.push({op: "add", path: "/card__schedule_d", value: [datestring]});
             }
             vnode.attrs.patch(patch);
         }
@@ -370,19 +370,19 @@ const CardForm = {
             m("dl.text-small",
               m("dt", "Schedule Date"),
               m("dd.ml-2",
-                scheduled?doc.schedule_d[0]:vnode.attrs.patch?m("button.btn.btn-sm.btn-primary", {onclick: schedule}, "Schedule"):"N/A"),
+                scheduled?doc.card__schedule_d[0]:vnode.attrs.patch?m("button.btn.btn-sm.btn-primary", {onclick: schedule}, "Schedule"):"N/A"),
               m("dt", "Start Date"),
               m("dd.ml-2",
-                started?doc.start_d[0]:vnode.attrs.patch?m("button.btn.btn-sm.btn-primary", {onclick: start}, "Start"):"N/A"),
+                started?doc.card__start_d[0]:vnode.attrs.patch?m("button.btn.btn-sm.btn-primary", {onclick: start}, "Start"):"N/A"),
               m("dt", "End Date"),
               m("dd.ml-2",
-                ended?doc.end_d[0]:vnode.attrs.patch?m("button.btn.btn-sm.btn-primary", {onclick: end}, "End"):"N/A"),
+                ended?doc.card__end_d[0]:vnode.attrs.patch?m("button.btn.btn-sm.btn-primary", {onclick: end}, "End"):"N/A"),
               m("dt", "Milestone"),
               m("dd",
                 m(AutoCompleteInput,
-                  {paths: vnode.attrs.doc.milestone_i,
-                   query: "category_i:milestone AND NOT end_d:>=1900-01-01",
-                   attribute: "milestone_i",
+                  {paths: vnode.attrs.doc.card__milestone_i,
+                   query: "category_i:milestone AND NOT milestone__end_d:>=1900-01-01",
+                   attribute: "card__milestone_i",
                    patch: vnode.attrs.patch,
                    popover: "popover-right",
                   }
@@ -391,9 +391,9 @@ const CardForm = {
               m("dt", "Assignee"),
               m("dd",
                 m(AutoCompleteInput,
-                  {paths: vnode.attrs.doc.assignee_i,
+                  {paths: vnode.attrs.doc.card__assignee_i,
                    query: "category_i:operator",
-                   attribute: "assignee_i",
+                   attribute: "card__assignee_i",
                    patch: vnode.attrs.patch,
                    popover: "popover-right",
                   }
@@ -402,9 +402,9 @@ const CardForm = {
               m("dt", "Blocker"),
               m("dd",
                 m(AutoCompleteInput,
-                  {paths: vnode.attrs.doc.blocker_i,
-                   query: `category_i:card AND NOT end_d:>=1900-01-01 AND NOT path:${vnode.attrs.path}`,
-                   attribute: "blocker_i",
+                  {paths: vnode.attrs.doc.card__blocker_i,
+                   query: `category_i:card AND NOT card__end_d:>=1900-01-01 AND NOT path:${vnode.attrs.path}`,
+                   attribute: "card__blocker_i",
                    patch: vnode.attrs.patch,
                    popover: "popover-right",
                   }
@@ -420,8 +420,8 @@ function format_date(date) {
 }
 
 function format_card(card, row, start, end, today) {
-    let start_d = card.start_d[0];
-    let end_d = card.end_d;
+    let start_d = card.card__start_d[0];
+    let end_d = card.card__end_d;
     let start_date = new Date(start_d.slice(0,4), start_d.slice(4,6) - 1, start_d.slice(6,8));
     let end_date = null;
     if (end_d !== undefined) {
@@ -486,7 +486,7 @@ const Calendar = {
         m.request(
             {method: "POST",
              url: "/search/",
-             body: {q: `category_i:card AND start_d:[TO ${get_datestring(end)}] AND (end_d:[${get_datestring(start)} TO] OR NOT end_d:[1900-01-01 TO])`}}
+             body: {q: `category_i:card AND card__start_d:[TO ${get_datestring(end)}] AND (card__end_d:[${get_datestring(start)} TO] OR NOT card__end_d:[1900-01-01 TO])`}}
         ).then(
             function(result) {
                 vnode.state.cards = result;
@@ -528,7 +528,7 @@ const Calendar = {
 
 export const routes = {
     "/kanban/": (vnode) => m(Kanban),
-    "/kanban/:path...": (vnode) => m(Milestone, {key: m.route.get(), path: vnode.attrs.path}),
+    "/kanban/:path": (vnode) => m(Milestone, {key: m.route.get(), path: vnode.attrs.path}),
     "/calendar/": (vnode) => m(Calendar),
 };
 
@@ -546,28 +546,17 @@ export const searches = [
 export const categories = {
     card: {
         name: "Card",
-        component: CardForm,
-        attributes: [
-            "assignee_i",
-            "blocker_i",
-            "milestone_i",
-            "schedule_d",
-            "start_d",
-            "end_d"]},
+        component: CardForm
+    },
     milestone: {
         name: "Milestone",
-        component: MilestoneForm,
-        attributes: [
-            "project_i",
-            "start_d",
-            "end_d"
-        ]
+        component: MilestoneForm
     },
     operator: {
-        "name": "Operator",
+        name: "Operator",
     },
     project: {
-        "name": "Project",
+        name: "Project",
         component: ProjectForm,
     }
 }

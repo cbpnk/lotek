@@ -268,12 +268,12 @@ class FeishuTenant:
                 data=json.dumps({"token": token, "type": "doc", "link_share_entity": "tenant_editable"}).encode()))
         result = json.load(response)
         assert result['code'] == 0
-        metadata.update({"feishu_token_i": [token], "revision_n": ["0"]})
+        metadata.update({"feishu__token_i": [token], "feishu__revision_n": ["0"]})
         return metadata
 
 
     def get_new_content(self, filename, metadata):
-        token = metadata["feishu_token_i"][0]
+        token = metadata["feishu__token_i"][0]
         response = urlopen(
             Request(
                 url=f"https://open.feishu.cn/open-apis/doc/v2/{token}/content",
@@ -284,12 +284,12 @@ class FeishuTenant:
         result = json.load(response)
         assert result['code'] == 0
 
-        if int(metadata.get("revision_n", ["0"])[0]) >= result['data']['revision']:
+        if int(metadata.get("feishu__revision_n", ["0"])[0]) >= result['data']['revision']:
             return
 
         content = json.loads(result['data']['content'])
         title = ''.join(elem['textRun']['text'] for elem in content["title"]["elements"])
-        metadata["revision_n"] = [str(result['data']['revision'])]
+        metadata["feishu__revision_n"] = [str(result['data']['revision'])]
         metadata["title_t"] = [title]
         parts = list(to_markdown(content, self.url))
         metadata["content"] = ''.join(parts[1:]) if parts else ''

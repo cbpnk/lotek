@@ -14,10 +14,12 @@ const CategoryTabs = {
                     [{op: "remove",
                       path: `/category_i/${vnode.attrs.doc.category_i.indexOf(category)}`}
                     ].concat(
-                        (registry.categories[category].attributes || []).filter(
+                        Object.keys(vnode.attrs.doc).filter(
                             (attr) =>
-                            (vnode.attrs.doc[attr] || []).length > 0).map(
-                                (attr) => ({op: "remove", path: `/${attr}`}))
+                            attr.startsWith(`${category}__`)
+                        ).map(
+                            (attr) =>
+                            ({op: "remove", path: `/${attr}`}))
                     )).then(
                         function(doc) {
                             vnode.state.active = (doc.category_i || [])[0];

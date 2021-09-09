@@ -39,13 +39,13 @@ def extract_metadata(f):
     meta = {"category_i": ["pdf"]}
     author = metadata.pop("Author", None)
     if author:
-        meta["author_t"] = [a.strip() for a in author.split(",")]
+        meta["pdf__author_t"] = [a.strip() for a in author.split(",")]
     title = metadata.pop("Title", None)
     if title:
         meta["title_t"] = [title]
     keywords = metadata.pop("Keywords", None)
     if keywords:
-        meta["keyword_t"] = [a.strip() for a in keywords.split(",")]
+        meta["pdf__keyword_t"] = [a.strip() for a in keywords.split(",")]
 
     for k, v in metadata.items():
         print(f"{k}: {v}")

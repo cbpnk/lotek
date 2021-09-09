@@ -28,9 +28,9 @@ def extract_metadata(f):
 
     return {
         "category_i": ["maff"],
-        "originalurl_i": [originalurl],
+        "maff__originalurl_i": [originalurl],
         "title_t": [title],
-        "archive_d": [archivetime.isoformat()]
+        "maff__archive_d": [archivetime.isoformat()]
     }
 
 

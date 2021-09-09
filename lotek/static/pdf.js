@@ -1,8 +1,8 @@
 const PDFForm = {
     view: function(vnode) {
         return m("dl.text-small",
-                 [["Author", "author_t"],
-                  ["Keyword", "keyword_t"]].map(
+                 [["Author", "pdf__author_t"],
+                  ["Keyword", "pdf__keyword_t"]].map(
                       ([name, key]) =>
                       [m("dt", name),
                        (vnode.attrs.doc[key] || []).map(
