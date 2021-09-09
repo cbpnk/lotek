@@ -1,14 +1,11 @@
 const MAFFForm = {
     view: function(vnode) {
-        return [
-            m(m.route.Link, {href: `/${vnode.attrs.path.slice(0,-4)}.maff`}, "Open"),
-            m("dl.text-small",
-              m("dt", "Origin"),
-              m("dd.ml-2", m("a", {href: vnode.attrs.doc.originalurl_i}, vnode.attrs.doc.originalurl_i)),
-              m("dt", "Archive Time"),
-              m("dd.ml-2", vnode.attrs.doc.archive_d)
-             )
-        ];
+        return m("dl.text-small",
+                 m("dt", "Origin"),
+                 m("dd.ml-2", m("a", {href: vnode.attrs.doc.originalurl_i}, vnode.attrs.doc.originalurl_i)),
+                 m("dt", "Archive Time"),
+                 m("dd.ml-2", vnode.attrs.doc.archive_d)
+                );
     }
 }
 

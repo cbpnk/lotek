@@ -1,18 +1,18 @@
 const Widget = {
     view: function(vnode) {
-        function onclick() {
-            m.request(
-                {method: "OPEN",
-                 url: `/${vnode.attrs.path.slice(0,-4)}.pdf`
+        for (let ext of ["pdf", "maff"]) {
+            if ((vnode.attrs.doc.category_i || []).includes(ext)) {
+                let url = `/${vnode.attrs.path.slice(0, -ext.length)}.${ext}`;
+                function onclick() {
+                    m.request({method: "OPEN", url});
                 }
-            );
-        }
-
-        if ((vnode.attrs.doc.category_i || []).includes("pdf")) {
-            return [
-                m("div.divider", {"data-content": "Media"}),
-                m("button.btn.btn-primary.btn-sm", {onclick}, "Open Containing Folder")
-            ];
+                return [
+                    m("div.divider", {"data-content": "Media"}),
+                    m("div.btn-group.btn-group-block",
+                      m(m.route.Link, {"class": "btn btn-primary btn-sm", href: url}, "View"),
+                      m("button.btn.btn-sm", {onclick}, "Open Containing Folder"))
+                ];
+            }
         }
     }
 };
