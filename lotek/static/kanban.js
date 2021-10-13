@@ -1,5 +1,6 @@
 import {AutoCompleteInput} from "/static/autocomplete.js";
 import {Link, Title} from "/static/view.js";
+import {Reload} from "/static/reload.js";
 
 
 function is_blocked(card, cards) {
@@ -12,55 +13,57 @@ function is_blocked(card, cards) {
     return false;
 }
 
-const Milestone = {
-    oninit: function(vnode) {
+class Milestone extends Reload {
+    oninit(vnode) {
+        super.oninit(vnode);
         document.title = vnode.attrs.path;
+    }
 
-        m.request(
-            {method: "GET",
-             url: "/:path",
-             params: {path: vnode.attrs.path},
-             responseType: "json"}
-        ).then(
-            function (result) {
+    load(vnode) {
+        return {
+            async milestone() {
+                let result = await m.request(
+                    {method: "GET",
+                     url: "/:path",
+                     params: {path: vnode.attrs.path},
+                     responseType: "json"}
+                );
                 document.title = (result.title_t || [vnode.attrs.path])[0];
+                return result;
             },
-            function (error) {
-                console.log(error);
-            }
-        );
 
-        m.request(
-            {method: "POST",
-             url: "/search/",
-             body: {q: `category_i:card AND card__milestone_i:${vnode.attrs.path}`}}
-        ).then(
-            function(result) {
-                vnode.state.cards_in_backlog = [];
-                vnode.state.cards_in_inbox = [];
-                vnode.state.cards_in_wip = [];
-                vnode.state.cards_in_done = [];
+            async cards() {
+                let result = await m.request(
+                    {method: "POST",
+                     url: "/search/",
+                     body: {q: `category_i:card AND card__milestone_i:${vnode.attrs.path}`}}
+                );
+
+                let cards = {
+                    in_backlog: [],
+                    in_inbox: [],
+                    in_wip: [],
+                    in_done: [],
+                };
 
                 for (let card of result) {
                     if (card.card__end_d) {
-                        vnode.state.cards_in_done.push(card);
+                        cards.in_done.push(card);
                     } else if (card.card__start_d) {
-                        vnode.state.cards_in_wip.push(card);
+                        cards.in_wip.push(card);
                     } else if (card.card__schedule_d) {
-                        vnode.state.cards_in_inbox.push(card);
+                        cards.in_inbox.push(card);
                     } else {
-                        vnode.state.cards_in_backlog.push(card);
+                        cards.in_backlog.push(card);
                     }
                 }
 
-            },
-            function(error) {
-                console.log(error);
+                return cards
             }
-        );
-    },
+        };
+    }
 
-    view: function(vnode) {
+    render({cards}, vnode) {
         return [
             m("aside.left",
               m(m.route.Link,
@@ -68,10 +71,10 @@ const Milestone = {
                 "Go back")
              ),
             m("div.columns", {"style": "grid-column: 2 / span 2; margin: 1em;"},
-              [{name: "BACKLOG", cards: vnode.state.cards_in_backlog},
-               {name: "INBOX", cards: vnode.state.cards_in_inbox},
-               {name: "WIP", cards: vnode.state.cards_in_wip},
-               {name: "DONE", cards: vnode.state.cards_in_done}
+              [{name: "BACKLOG", cards: cards.in_backlog},
+               {name: "INBOX", cards: cards.in_inbox},
+               {name: "WIP", cards: cards.in_wip},
+               {name: "DONE", cards: cards.in_done}
               ].map(
                   (panel) =>
                   m("div.panel.column.mx-2",
@@ -97,86 +100,82 @@ const Milestone = {
     }
 };
 
-const Kanban = {
-    oninit: function(vnode) {
+class Kanban extends Reload {
+    oninit(vnode) {
+        super.oninit(vnode);
         document.title = 'Kanban';
-        m.request(
-            {method: "POST",
-             url: "/search/",
-             body: {q: "category_i:milestone AND milestone__start_d:>=1900-01-01 AND NOT milestone__end_d:>=1900-01-01"}
-            }
-        ).then(
-            function(result) {
-                vnode.state.milestones = result;
-                vnode.state.milestones_by_path = Object.fromEntries(
-                    result.map((milestone) => [milestone.path, milestone]));
-            },
-            function(error) {
-                console.log(error);
-            }
-        );
+    }
 
-        m.request(
-            {method: "POST",
-             url: "/search/",
-             body: {q: "category_i:operator"}
-            }
-        ).then(
-            function(result) {
-                vnode.state.operators = Object.fromEntries(
-                    result.map((operator) => [operator.path, operator]));
-            },
-            function(error) {
-                console.log(error);
-            }
-        );
-
-        m.request(
-            {method: "POST",
-             url: "/search/",
-             body: {q: "category_i:card AND NOT card__end_d:>=1900-01-01"}}
-        ).then(
-            function(result) {
-                const cards = Object.fromEntries(
-                    result.map((card) => [card.path, card])
+    load(vnode) {
+        return {
+            async milestones() {
+                let result = await m.request(
+                    {method: "POST",
+                     url: "/search/",
+                     body: {q: "category_i:milestone AND milestone__start_d:>=1900-01-01 AND NOT milestone__end_d:>=1900-01-01"}
+                    }
                 );
 
-                vnode.state.cards = cards;
-                vnode.state.cards_in_milestones = {};
-                vnode.state.cards_in_backlog = [];
-                vnode.state.cards_in_inbox = [];
-                vnode.state.cards_in_wip = [];
-                vnode.state.cards_in_blocked = [];
+                return {
+                    list: result,
+                    by_path: Object.fromEntries(result.map((milestone) => [milestone.path, milestone])),
+                }
+            },
+
+            async operators() {
+                let result = await m.request(
+                    {method: "POST",
+                     url: "/search/",
+                     body: {q: "category_i:operator"}
+                    }
+                );
+                return Object.fromEntries(result.map((operator) => [operator.path, operator]));
+            },
+
+            async cards() {
+                let result = await m.request(
+                    {method: "POST",
+                     url: "/search/",
+                     body: {q: "category_i:card AND NOT card__end_d:>=1900-01-01"}}
+                );
+
+
+                let cards = {
+                    by_path: Object.fromEntries(
+                        result.map((card) => [card.path, card])
+                    ),
+                    in_milestones: {},
+                    in_backlog: [],
+                    in_inbox: [],
+                    in_wip: [],
+                    in_blocked: []
+                };
 
                 for (let card of result) {
                     if (card.card__start_d) {
                         if (is_blocked(card, cards)) {
-                            vnode.state.cards_in_blocked.push(card);
+                            cards.in_blocked.push(card);
                         } else {
-                            vnode.state.cards_in_wip.push(card);
+                            cards.in_wip.push(card);
                         }
                     } else if (card.card__schedule_d) {
-                        vnode.state.cards_in_inbox.push(card);
+                        cards.in_inbox.push(card);
                     } else if (card.card__milestone_i) {
                         for (let milestone_i of card.card__milestone_i) {
-                            vnode.state.cards_in_milestones[card__milestone_i] = vnode.state.cards_in_milestones[card__milestone_i] || [];
-                            vnode.state.cards_in_milestones[card__milestone_i].push(card);
+                            cards.in_milestones[milestone_i] = cards.in_milestones[milestone_i] || [];
+                            cards.in_milestones[milestone_i].push(card);
                         }
                     } else {
-                        vnode.state.cards_in_backlog.push(card);
+                        cards.in_backlog.push(card);
                     }
-
                 }
 
-                m.redraw();
-            },
-            function(error) {
-                console.log(error);
+                return cards;
             }
-        )
-    },
+        };
+    }
 
-    view: function(vnode) {
+    render({milestones, operators, cards}) {
         return [
             m("div.columns", {"style": "grid-column: 1 / span 3; margin: 1em;"},
               m("div.panel.column.mx-2",
@@ -184,15 +183,14 @@ const Kanban = {
                   m("div.panel-title", "Milestones")
                  ),
                 m("div.panel-body",
-                  (!vnode.state.milestones)?m("div.loading.loading-lg"):
-                  vnode.state.milestones.map(
+                  milestones.list.map(
                       (milestone) =>
                       m("div.card.my-2",
                         m("div.card-header",
                           m(m.route.Link,
                             {href: m.buildPathname("/kanban/:path", {path: milestone.path}),
                              "class": "badge",
-                             "data-badge": ((vnode.state.cards_in_milestones || {})[milestone.path] || []).length },
+                             "data-badge": ((cards.in_milestones || {})[milestone.path] || []).length },
                               m(Title, {doc: milestone}))
                          ),
                         m("div.card-body",
@@ -202,12 +200,11 @@ const Kanban = {
                  )
                ),
 
-
               [
-                  {name: "BACKLOG", cards: vnode.state.cards_in_backlog},
-                  {name: "INBOX", cards: vnode.state.cards_in_inbox},
-                  {name: "BLOCKED", cards: vnode.state.cards_in_blocked},
-                  {name: "WIP", cards: vnode.state.cards_in_wip},
+                  {name: "BACKLOG", cards: cards.in_backlog},
+                  {name: "INBOX", cards: cards.in_inbox},
+                  {name: "BLOCKED", cards: cards.in_blocked},
+                  {name: "WIP", cards: cards.in_wip},
               ].map(
                   (panel) =>
                   m("div.panel.column.mx-2",
@@ -215,7 +212,6 @@ const Kanban = {
                       m("div.panel-title", panel.name)
                      ),
                     m("div.panel-body",
-                      (!panel.cards)?m("div.loading.loading-lg"):
                       panel.cards.map(
                           (card) =>
                           m("div.card.my-2",
@@ -224,19 +220,18 @@ const Kanban = {
                                 m(m.route.Link,
                                   {href: m.buildPathname("/:path...", {path: card.path}),
                                    "class": "badge",
-                                   "data-badge": (card.card__blocker_i || []).filter((path) => path in vnode.state.cards).length || undefined
+                                   "data-badge": (card.card__blocker_i || []).filter((path) => path in cards.by_path).length || undefined
                                   },
                                   m(Title, {doc: card})))
                                ),
                               m("div.card-subtitle",
                                 (card.card__milestone_i || [])
-                                .filter((path) => path in vnode.state.milestones_by_path)
-                                .map((path) => m("span.chip", m(Title, {doc: vnode.state.milestones_by_path[path]})))
+                                .filter((path) => path in milestones.by_path)
+                                .map((path) => m("span.chip", m(Title, {doc: milestones.by_path[path]})))
                                ),
                             m("div.card-body",
-                              (!vnode.state.operators)?m("div.loading"):
-                              (card.card__operator_i || [])
-                              .map((path) => m("span.chip", m(Title, {doc: vnode.state.operators[path]})))
+                              (card.card__assignee_i || [])
+                              .map((path) => m("span.chip", m(Title, {doc: operators[path]})))
                              )
                            )
                       )
@@ -303,27 +298,20 @@ const MilestoneForm = {
     }
 };
 
-const ProjectForm = {
-    oninit: function(vnode) {
-        m.request(
+class ProjectForm extends Reload {
+    load(vnode) {
+        return () => m.request(
             {method: "POST",
              url: "/search/",
              body: {q: `category_i:milestone milestone__project_i:${vnode.attrs.path}`}}
-        ).then(
-            function(result) {
-                vnode.state.milestones = result;
-                m.redraw();
-            },
-            function(error) {
-            }
         );
-    },
+    }
 
-    view: function(vnode) {
+    render(milestones) {
         return m(
             "dl.text-small",
             m("dt", "Milestones"),
-            (vnode.state.milestones || []).map(
+            (milestones || []).map(
                 (milestone) =>
                 m("dd.ml-2", m(Link, {doc: milestone}))
             )
@@ -422,11 +410,13 @@ function format_date(date) {
 function format_card(card, row, start, end, today) {
     let start_d = card.card__start_d[0];
     let end_d = card.card__end_d;
-    let start_date = new Date(start_d.slice(0,4), start_d.slice(4,6) - 1, start_d.slice(6,8));
+    let start_date = new Date(start_d);
+    start_date = new Date(start_date.getFullYear(), start_date.getMonth(), start_date.getDate());
     let end_date = null;
     if (end_d !== undefined) {
         end_d = end_d[0];
-        end_date = new Date(end_d.slice(0,4), end_d.slice(4,6) - 1, end_d.slice(6,8));
+        end_date = new Date(end_d);
+        end_date = new Date(end_date.getFullYear(), end_date.getMonth(), end_date.getDate());
     }
 
     let start_column = 1 + ((start_date <= start)?0:((start_date.valueOf() - start.valueOf()) / 86400000));
@@ -473,34 +463,28 @@ function format_card(card, row, start, end, today) {
     ];
 }
 
-
-const Calendar = {
-    oninit: function(vnode) {
-        document.title = 'Calendar';
+class Calendar extends Reload {
+    oninit(vnode) {
         let now = new Date();
         let today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        vnode.state.today = today;
+        super.oninit(vnode);
+        document.title = 'Calendar';
+    }
+
+    load(vnode) {
+        let today = vnode.state.today;
         let start = new Date(today.valueOf() - 86400000 * today.getDay());
         let end = new Date(start.valueOf() + 86400000 * 7);
-
-        vnode.state.cards = [];
-        m.request(
+        return () => m.request(
             {method: "POST",
              url: "/search/",
              body: {q: `category_i:card AND card__start_d:[TO ${get_datestring(end)}] AND (card__end_d:[${get_datestring(start)} TO] OR NOT card__end_d:[1900-01-01 TO])`}}
-        ).then(
-            function(result) {
-                vnode.state.cards = result;
-                m.redraw();
-            },
-            function(error) {
-                console.log(error);
-            }
         );
-    },
+    }
 
-    view: function(vnode) {
-        let now = new Date();
-        let today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    render(cards, vnode) {
+        let today = vnode.state.today;
         let start = new Date(today.valueOf() - 86400000 * today.getDay());
         let end = new Date(start.valueOf() + 86400000 * 7);
 
@@ -519,12 +503,13 @@ const Calendar = {
        }
     </div>
     <div class="calendar-body" style="display: grid; grid-template-columns: repeat(7, 1fr);">
-      ${ vnode.state.cards.map((card, i) => format_card(card, i+1, start, end, today)) }
+      ${ cards.map((card, i) => format_card(card, i+1, start, end, today)) }
     </div>
   </div>
 </div>`;
     }
-};
+}
+
 
 export const routes = {
     "/kanban/": (vnode) => m(Kanban),

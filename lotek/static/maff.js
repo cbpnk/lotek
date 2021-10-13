@@ -1,3 +1,5 @@
+import {Reload} from "/static/reload.js";
+
 const MAFFForm = {
     view: function(vnode) {
         return m("dl.text-small",
@@ -9,10 +11,9 @@ const MAFFForm = {
     }
 }
 
-const View = {
-    oninit: function(vnode) {
-        vnode.state.doc = false;
-        m.request(
+class View extends Reload {
+    load(vnode) {
+        return () => m.request(
             {method: "GET",
              url: "/:path",
              params: {path: vnode.attrs.path},
@@ -21,27 +22,14 @@ const View = {
              },
              responseType: "text",
             }
-        ).then(
-            function(result) {
-                vnode.state.doc = result;
-            },
-            function(error) {
-                console.log(error);
-            }
-        )
-    },
+        );
+    }
 
-    view: function(vnode) {
-       if (vnode.state.doc === false) {
-            return [
-                m("main", m("div.loading.loading-lg")),
-            ];
-        }
-
+    render(doc) {
         return [
             m("iframe",
               {style: "grid-column: 1 / span 3; height: 100%; grid-row: 3; border: 0px; padding: 0; margin: 0;",
-               srcdoc: vnode.state.doc,
+               srcdoc: doc,
                onload: function(event) {
                    event.target.contentWindow.location.hash = window.location.hash;
                    const script = event.target.contentDocument.createElement("script");
@@ -52,7 +40,7 @@ const View = {
              )
         ];
     }
-};
+}
 
 export const routes = {
     "/:path.maff": (vnode) => m(View, {key: m.route.get(), path: `${vnode.attrs.path}.maff`}),

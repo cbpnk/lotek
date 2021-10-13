@@ -1,3 +1,5 @@
+import {Reload} from "/static/reload.js";
+
 const icons = {
     "add": "icon-plus",
     "modify": "icon-edit",
@@ -15,34 +17,31 @@ function format_link(item) {
 function format_author(author) {
     if (author.path) {
         return m(m.route.Link,
-                 {href: m.buildPathname("/:path...", {path: author.path})},
+                 {href: m.buildPathname("/:path", {path: author.path})},
                   author.name)
     }
     return m("span", author.name, " <", author.email, ">")
 }
 
-const Changes = {
-    oninit: function(vnode) {
-        vnode.state.changes = [];
+
+class Changes extends Reload {
+    oninit(vnode) {
         document.title = 'Recent Changes';
-        m.request(
+        super.oninit(vnode);
+    }
+
+    load(vnode) {
+        return () => m.request(
             {method: "POST",
              url: "/changes"
             }
-        ).then(
-            function(result) {
-                vnode.state.changes = result;
-                m.redraw();
-            }
         );
-    },
+    }
 
-    view: function(vnode) {
-        return html`
-<main>
-  <div class="timeline">
-  ${ vnode.state.changes.map(
-       (change) => html`
+    render(changes) {
+        return m("div.timeline",
+                 changes.map(
+                     (change) => html`
 <div class="timeline-item">
   <div class="timeline-left">
     <span class="timeline-icon icon-lg">
@@ -63,20 +62,21 @@ const Changes = {
           ${ change.message }
         </p>
         ${ change.changes.map(
-             (item) => html`
+               (item) => html`
 <p class="tile-title">
-  <i class="icon ${icons[item.type]}" />
-  ${ format_link(item) }
+ <i class="icon ${icons[item.type]}" />
+${ format_link(item) }
 </p>`) }
       </div>
     </div>
   </div>
-</div>`)
-  }
-  </div>
-</main>`;
+</div>`));
     }
-};
+
+    view(vnode) {
+        return m("main", super.view(vnode));
+    }
+}
 
 export const routes = {
     "/changes": (vnode) => m(Changes),

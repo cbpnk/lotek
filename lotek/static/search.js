@@ -1,4 +1,5 @@
 import {Link} from "/static/view.js";
+import {Reload} from "/static/reload.js";
 
 const Action = {
     view: function(vnode) {
@@ -17,31 +18,22 @@ const Action = {
     }
 };
 
-const Search = {
-    oninit: function(vnode) {
+class Search extends Reload {
+    oninit(vnode) {
+        super.oninit(vnode);
         document.title = 'Search ' + vnode.attrs.key;
-        vnode.state.results = false;
-        m.request(
+    }
+
+    load(vnode) {
+        return () => m.request(
             {method: "POST",
              url: "/search/",
              body: {q: vnode.attrs.key, highlight: true}}
-        ).then(
-            function(result) {
-                vnode.state.results = result;
-                m.redraw();
-            },
-            function(error) {
-            }
         );
-    },
+    }
 
-    view: function(vnode) {
-        if (vnode.state.results === false) {
-            return html`<div class="loading loading-lg"></div>`;
-        }
-        return html`
-<main>
-${ vnode.state.results.map(
+    render(results) {
+        return results.map(
      (result) => html`
 <div class="card my-1">
   <div class="card-header">
@@ -53,10 +45,13 @@ ${ vnode.state.results.map(
   <div class="card-body">
     ${ m.trust(result.excerpts) }
   </div>
-</div>`) }
-</main>`;
+</div>`);
     }
-};
+
+    view(vnode) {
+        return m("main", super.view(vnode));
+    }
+}
 
 export const routes = {
     "/search/": (vnode) => m(Search, {key: new URLSearchParams(window.location.search).get("q")})

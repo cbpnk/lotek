@@ -1,29 +1,27 @@
 import {levenshteinEditDistance} from "/static/vendor/npm/levenshtein-edit-distance@3.0.0/index.js";
 import {Title} from "/static/view.js";
+import {Reload} from "/static/reload.js";
 
-export const AutoCompleteInput = {
-    oninit: function(vnode) {
+export class AutoCompleteInput extends Reload {
+    oninit(vnode) {
+        super.oninit(vnode);
         vnode.state.value = "";
+    }
 
-        m.request(
-            {method: "POST",
-             url: "/search/",
-             body: {q: vnode.attrs.query}}
-        ).then(
-            function(result) {
-                vnode.state.items = Object.fromEntries(result.map((item) => [item.path, item]));
-                m.redraw();
-            },
-            function(error) {
-                console.log(error);
-            }
-        );
+    load(vnode) {
+        return async function() {
+            let result = await m.request(
+                {method: "POST",
+                 url: "/search/",
+                 body: {q: vnode.attrs.query}}
+            );
+            return Object.fromEntries(result.map((item) => [item.path, item]));
+        }
+    }
 
-    },
-
-    view: function(vnode) {
+    render(items_by_path, vnode) {
         const autocomplete_items = Object.values(
-            vnode.state.items || {}
+            items_by_path || {}
         ).filter(
             (item) =>
             !(vnode.attrs.paths || []).includes(item.path));
@@ -58,7 +56,7 @@ export const AutoCompleteInput = {
             );
         }
 
-        if (!vnode.state.items) {
+        if (!items_by_path) {
             return html`
 <div class="input-group form-autocomplete">
   ${ vnode.attrs.addon?html`<span class="input-group-addon">${ vnode.attrs.addon }</span>`:null }
@@ -78,14 +76,14 @@ export const AutoCompleteInput = {
   <div class="popover ${ vnode.attrs.popover }">
     <span class="chip">
       <${m.route.Link} href=${ m.buildPathname("/:path", {path}) }>
-        <${Title} path=${path} doc=${ vnode.state.items[path] }><//>
+        <${Title} path=${path} doc=${ items_by_path[path] }><//>
       <//>
     </span>
     ${ (vnode.attrs.patch)?html`<button class="btn btn-clear" onclick=${ function() { remove_path(path); } }></button>`:null }
     <div class="popover-container">
       <div class="card">
         <div class="card-header">
-          <div class="card-title h5"><${Title} doc=${ vnode.state.items[path] } path=${ path }><//></div>
+          <div class="card-title h5"><${Title} doc=${ items_by_path[path] } path=${ path }><//></div>
           <div class="card-subtitle">${ path }</div>
         </div>
       </div>
