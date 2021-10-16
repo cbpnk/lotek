@@ -1,5 +1,3 @@
-import {get_token} from "/static/auth.js";
-
 const Action = {
     oninit: function(vnode) {
         vnode.state.active = false;
@@ -7,8 +5,7 @@ const Action = {
     },
 
     view: function(vnode) {
-        let token = get_token();
-        if (!token)
+        if (!USER_ID)
             return;
 
         function random_char() {
@@ -25,7 +22,7 @@ const Action = {
                 {method: "PUT",
                  url: m.buildPathname("/:path", {path}),
                  headers: {'X-Lotek-Date': (new Date()).toUTCString(),
-                           'Authorization': `Bearer ${token}`}}
+                           'X-CSRF-Token': CSRF_TOKEN}}
             ).then(
                 function (result) {
                     m.route.set(m.buildPathname("/:path", {path}));
@@ -57,7 +54,7 @@ const Action = {
                     )
                 },
                 headers: {'X-Lotek-Date': (new Date()).toUTCString(),
-                          'Authorization': `Bearer ${token}`}
+                          'X-CSRF-Token': CSRF_TOKEN}
             }).then(
                 function(path) {
                     vnode.state.active = false;

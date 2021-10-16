@@ -1,5 +1,3 @@
-import {get_token} from "/static/auth.js";
-
 function update_doc(vnode, result) {
     vnode.state.doc = result.response;
     vnode.state.etag = result.etag;
@@ -32,7 +30,6 @@ const View = {
     },
 
     view: function(vnode) {
-        let token = get_token();
         if (vnode.state.doc === null) {
             return [
                 m("main", "NOT FOUND")
@@ -50,7 +47,7 @@ const View = {
                  url: "/:path",
                  params: {path: vnode.attrs.path},
                  headers: {'X-Lotek-Date': (new Date()).toUTCString(),
-                           'Authorization': `Bearer ${token}`},
+                           'X-CSRF-Token': CSRF_TOKEN},
                  responseType: "json",
                  extract: function(xhr) { return {etag: xhr.getResponseHeader("ETag"), response: xhr.response}; }
                 }
@@ -73,7 +70,7 @@ const View = {
                  params: {path: vnode.attrs.path},
                  headers: {'If-Match': vnode.state.etag,
                            'X-Lotek-Date': (new Date()).toUTCString(),
-                           'Authorization': `Bearer ${token}`},
+                           'X-CSRF-Token': CSRF_TOKEN},
                  body: body,
                  responseType: "json",
                  extract: function(xhr) { return {etag: xhr.getResponseHeader("ETag"), response: xhr.response}; }
@@ -120,7 +117,7 @@ const View = {
 
                  },
                  srcdoc: vnode.state.doc.html,
-                 key: token || "anonymous"
+                 key: USER_ID || "anonymous"
                 }
                )
              ),
@@ -134,8 +131,8 @@ const View = {
                 m(component, widgets.map(
                     (widget) =>
                     m(widget,
-                      {patch: (token)?patch:undefined,
-                       edit: (token)?show_edit:null,
+                      {patch: (USER_ID)?patch:undefined,
+                       edit: (USER_ID)?show_edit:null,
                        path: vnode.attrs.path,
                        doc:vnode.state.doc})))
             )

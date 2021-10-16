@@ -75,7 +75,8 @@ def scrapbooks(request):
     return handler(request)
 
 @auth_required
-def scrapbooks_maff(request, name):
+def scrapbooks_maff(request):
+    name = request.environ['route_args']['name']
     if request.method == 'GET':
         return json_response(
             {"success": True,
@@ -86,7 +87,6 @@ def scrapbooks_maff(request, name):
                  "last_modified": None,
                  "mime": "application/x-maff"}})
     elif request.method == 'POST':
-        print(request.environ)
         action = request.query.get("a", ["unknown"])[0]
         if action == 'save':
             f = request.files.get("upload", [None])[0]

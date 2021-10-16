@@ -1,4 +1,4 @@
-@require(title,html)
+@require(title, html, CSRF_TOKEN)
 <!doctype html>
 <html>
 <head>
@@ -47,7 +47,7 @@ var hypothesisConfig = function() {
     return {
         services: [{
             apiUrl: `${window.parent.location.protocol}//${window.parent.location.host}/hypothesis/api/`,
-            grantToken: localStorage.getItem('token'),
+            grantToken: @CSRF_TOKEN,
             sentry: {"enabled": false},
             assetRoot: "/static/vendor/npm/hypothesis@@1.810.0/",
         }]

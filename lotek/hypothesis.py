@@ -1,11 +1,14 @@
-from wheezy.http import HTTPResponse, not_found, method_not_allowed, json_response, http_error, unauthorized
 import json
 from datetime import datetime
 from random import choices
 from urllib.parse import parse_qs
+
+from wheezy.http import HTTPResponse, not_found, method_not_allowed, json_response, http_error, unauthorized, forbidden
+
 from .accounts import get_name, get_addr, get_names
 from .config import config
 from .index import spawn_indexer
+from .auth import BaseHandler
 
 def api(request):
     host = request.environ['HTTP_HOST']
@@ -132,43 +135,34 @@ def api(request):
         }
     }
 
-    response = HTTPResponse(content_type='application/json')
-    response.write(
-        json.dumps({'links': LINKS})
-    )
-    return response
-
+    return json_response({'links': LINKS})
 
 def api_links(request):
-    response = HTTPResponse(content_type='application/json')
-    response.write(
-        json.dumps(
-            {"accounts.settings": "/hypothesis/account/settings",
-             "forget-password": "/hypothesis/forget-password",
-             "groups.new": "/hypothesis/groups/new",
-             "help": "/hypothesis/docs/help",
-             "oauth.authorize": "/hypothesis/oauth/authorized",
-             "oauth.revoke": "/hypothesis/oauth/revoke",
-             "search.tag": "/hypothesis/search",
-             "signup": "/hypothesis/signup",
-             "user": "/hypothesis/u/:user",
-            })
-    )
-    return response
+    return json_response(
+        {"accounts.settings": "/hypothesis/account/settings",
+         "forget-password": "/hypothesis/forget-password",
+         "groups.new": "/hypothesis/groups/new",
+         "help": "/hypothesis/docs/help",
+         "oauth.authorize": "/hypothesis/oauth/authorized",
+         "oauth.revoke": "/hypothesis/oauth/revoke",
+         "search.tag": "/hypothesis/search",
+         "signup": "/hypothesis/signup",
+         "user": "/hypothesis/u/:user",
+         })
 
 
+class TokenHandler(BaseHandler):
 
-def api_token(request):
-    response = HTTPResponse(content_type='application/json')
-    response.write(
-        json.dumps(
-            {"access_token": request.form['assertion'],
+    def post(self):
+        if self.request.form['assertion'][0] != self.xsrf_token:
+            return forbidden()
+
+        return self.json_response(
+            {"access_token": self.principal.id,
              "expires_in": 3600,
              "token_type": "Bearer"
              }
         )
-    )
-    return response
 
 DEFAULT_GROUP = {
     "id": "public",
@@ -185,33 +179,26 @@ DEFAULT_GROUP = {
 }
 
 def api_profile_groups(request):
-    response = HTTPResponse(content_type='application/json')
-    response.write(json.dumps([DEFAULT_GROUP]))
-    return response
+    return json_response([DEFAULT_GROUP])
 
 def api_groups(request):
-    response = HTTPResponse(content_type='application/json')
-    response.write(json.dumps([DEFAULT_GROUP]))
-    return response
+    return json_response([DEFAULT_GROUP])
 
 def api_profile(request):
     token = request.environ.get("HTTP_AUTHORIZATION", '')
     if not token.startswith('Bearer '):
         return unauthorized()
-    # host = request.environ['HTTP_HOST']
-    response = HTTPResponse(content_type='application/json')
     username = token[7:]
-    response.write(json.dumps(
+    return json_response(
         {"authority": config.DOMAIN,
          "features": {},
          "preferences": {},
          "userid": f"acct:{username}@{config.DOMAIN}",
          "user_info": {"display_name": get_name(username)}
-        }))
-    return response
+         })
 
 def reconstruct_link(obj, key, prefix):
-    if not obj[key].startswith("/"):
+    if not obj.get(key, "").startswith("/"):
         return
     obj[key] = prefix + obj[key][1:]
 
@@ -272,15 +259,13 @@ def api_search(request):
     for row in rows:
         row["user_info"] = {"display_name": usernames.get(row["user"][5:].split("@", 1)[0], None)}
 
-    response = HTTPResponse(content_type='application/json')
-    response.write(json.dumps(
+    return json_response(
         {"rows": rows,
          "total": len(rows),
-        }))
-    return response
+         })
 
 def rewrite_link(obj, key, prefix):
-    if not obj[key].startswith(prefix):
+    if not obj.get(key, "").startswith(prefix):
         return
     obj[key] = "/" + obj[key][len(prefix):]
 
@@ -362,7 +347,7 @@ hypothesis_urls = [
     ("api/", api),
     ("api/search", api_search),
     ("api/links", api_links),
-    ("api/token", api_token),
+    ("api/token", TokenHandler),
     ("api/groups", api_groups),
     ("api/profile", api_profile),
     ("api/profile/groups", api_profile_groups),

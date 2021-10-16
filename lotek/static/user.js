@@ -1,5 +1,3 @@
-import {get_token, set_token, clear_token} from "/static/auth.js";
-
 const Action = {
     oninit: function(vnode) {
         vnode.state.active = {};
@@ -11,12 +9,16 @@ const Action = {
     },
 
     view: function(vnode) {
-        let token = get_token();
-        let username = token;
+        let username = USER_ID;
 
         function logout() {
-            clear_token();
-            m.redraw();
+            USER_ID = null;
+            m.request(
+                {method: "POST",
+                 url: "/auth/logout",
+                 headers: {'X-CSRF-Token': CSRF_TOKEN},
+                }
+            );
         }
 
         function show_modal(name) {
@@ -31,7 +33,7 @@ const Action = {
             }
         }
 
-        if (token) {
+        if (USER_ID) {
             function onsubmit(e) {
                 e.preventDefault();
                 if (vnode.state.new_password !== vnode.state.confirm) {
@@ -40,10 +42,10 @@ const Action = {
                 }
                 m.request(
                     {method: "POST",
-                     url: "/change-password",
+                     url: "/auth/change-password",
                      body: {password: vnode.state.password, new_password: vnode.state.new_password},
                      headers: {'X-Lotek-Date': (new Date()).toUTCString(),
-                               'Authorization': `Bearer ${token}`},
+                               'X-CSRF-Token': CSRF_TOKEN},
                     }
                 ).then(
                     function(result) {
@@ -113,12 +115,13 @@ const Action = {
             e.preventDefault();
             m.request(
                 {method: "POST",
-                 url: "/authenticate",
+                 url: "/auth/login",
                  body: {username: vnode.state.username, password: vnode.state.password},
+                 headers: {'X-CSRF-Token': CSRF_TOKEN},
                 }
             ).then(
                 function(result) {
-                    set_token(result);
+                    USER_ID = result;
                     vnode.state.username = '';
                     vnode.state.password = '';
                     vnode.state.active["sign-in"] = false;

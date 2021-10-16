@@ -1,4 +1,4 @@
-@require(EDITOR, EDITOR_URL, PLUGINS)
+@require(EDITOR, EDITOR_URL, PLUGINS, USER_ID, CSRF_TOKEN)
 <!doctype html>
 <html>
 <head>
@@ -11,7 +11,9 @@
 <link rel="stylesheet" href="/static/base.css">
 
 <script type="text/javascript">
-const EDITOR_URL = "@EDITOR_URL";
+let USER_ID = @USER_ID;
+const CSRF_TOKEN = @CSRF_TOKEN;
+const EDITOR_URL = @EDITOR_URL;
 const html = htm.bind(m);
 const registry = {};
 registry.registry = registry;
@@ -30,10 +32,10 @@ window.addEventListener(
                 "/static/search.js",
                 "/static/category.js",
 @for p in PLUGINS:
-                "/static/@{p}.js",
+                "/static/" + @p +".js",
 @end
                 "/static/uncategorized.js",
-                "/static/@{EDITOR}.js"
+                "/static/" + @EDITOR + ".js"
             ];
 
             for (const filename of plugins) {

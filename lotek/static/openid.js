@@ -1,16 +1,18 @@
-import {get_token, clear_token} from "/static/auth.js";
-
 const Action = {
     view: function(vnode) {
-        let token = get_token();
-        let username = token;
+        let username = USER_ID;
 
         function logout() {
-            clear_token();
-            m.redraw();
+            USER_ID = null;
+            m.request(
+                {method: "POST",
+                 url: "/auth/logout",
+                 headers: {'X-CSRF-Token': CSRF_TOKEN},
+                }
+            );
         }
 
-        if (token) {
+        if (USER_ID) {
             return html`
 <div class="dropdown text-left">
   <button class="btn btn-link btn-sm dropdown-toggle" tabindex="0">

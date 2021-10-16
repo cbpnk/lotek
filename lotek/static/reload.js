@@ -32,7 +32,7 @@ export class Reload {
     oninit(vnode) {
         vnode.state.fire_reload = false;
         start_load(vnode, this.load(vnode)).then(
-            (data) => {vnode.state.data = data},
+            (data) => {vnode.state.data = data; m.redraw();},
             (error) => {console.log(error)});
     }
 

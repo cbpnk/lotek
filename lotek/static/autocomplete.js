@@ -16,7 +16,7 @@ export class AutoCompleteInput extends Reload {
                  body: {q: vnode.attrs.query}}
             );
             return Object.fromEntries(result.map((item) => [item.path, item]));
-        }
+        };
     }
 
     render(items_by_path, vnode) {
@@ -54,19 +54,6 @@ export class AutoCompleteInput extends Reload {
             vnode.attrs.patch(
                 [{op: "remove", path: `/${vnode.attrs.attribute}/${vnode.attrs.paths.indexOf(path)}`}]
             );
-        }
-
-        if (!items_by_path) {
-            return html`
-<div class="input-group form-autocomplete">
-  ${ vnode.attrs.addon?html`<span class="input-group-addon">${ vnode.attrs.addon }</span>`:null }
-  <div class="form-autocomplete-input form-input">
-    <div class="has-icon-left">
-      <input class="form-input" />
-      <i class="form-icon loading" />
-    </div>
-  </div>
-</div>`;
         }
 
         return [

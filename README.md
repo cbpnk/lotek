@@ -3,7 +3,7 @@
 * mithril.js
 * htm
 * spectre.css
-* wheezy
+* wheezy.web
 * dulwich
 * whoosh
 * pdfminer.six

@@ -1,9 +1,7 @@
 whoosh
 dulwich
 markdown
-wheezy.http
-wheezy.template
-wheezy.routing
+wheezy.web[wheezy.template]
 jsonpatch
 pyuwsgi
 pdfminer.six
