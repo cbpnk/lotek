@@ -2,19 +2,39 @@ import {Link} from "/static/view.js";
 import {Reload} from "/static/reload.js";
 
 const Action = {
+    oninit: function(vnode) {
+        vnode.state.value = new URLSearchParams(window.location.search).get("q");
+    },
+
     view: function(vnode) {
-        return m("form.input-group.input-inline.dropdown.dropdown-right[action='/search/']",
-                 m("input.form-input.input-sm[type=search][name='q']", {value: new URLSearchParams(window.location.search).get("q")}),
-                 (registry.searches.length===0)?
-                 m("span.btn.btn-primary.btn-sm.input-group-btn", "Search")
-                 :
-                 m("span.btn.btn-primary.btn-sm.input-group-btn.dropdown-toggle[tabindex=0]",
-                   "Search",
-                   m("i.icon.icon-caret")),
-                 m("ul.menu.text-left",
-                   registry.searches.map((link) => m("li.menu-item", m(m.route.Link, {href: m.buildPathname("/search/", {q: link.query})}, link.name)))
-                  )
-                );
+        return [
+            m(CUI.Input,
+              {value: vnode.state.value,
+               oninput: (e) => {vnode.state.value = e.target.value; }}),
+            m(CUI.Button,
+              {intent: "primary",
+               label: m(CUI.Icon, {name: CUI.Icons.SEARCH}),
+               onclick: () => m.route.set(m.buildPathname("/search/", {q: vnode.state.value}))}
+             ),
+            (registry.searches.length===0)?null:
+            m(CUI.PopoverMenu,
+              {closeOnContentClick: true,
+               trigger:
+               m(CUI.Button,
+                 {intent: "primary",
+                  compact: true,
+                  label: m(CUI.Icon, {name: CUI.Icons.CHEVRON_DOWN})}
+                ),
+               content: registry.searches.map(
+                   (link) =>
+                   m(CUI.MenuItem,
+                     {label: link.name,
+                      onclick: () => m.route.set(m.buildPathname("/search/", {q: link.query}))}
+                    )
+               )
+              }
+             )
+        ];
     }
 };
 

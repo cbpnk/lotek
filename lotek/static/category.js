@@ -51,39 +51,50 @@ const CategoryTabs = {
         }
 
         return [
-            m("ul.tab",
+            m(CUI.Tabs,
+              {align: "left",
+               bordered: true},
               (vnode.attrs.doc.category_i || []).map(
                   (category) =>
-                  m("li.tab-item",
-                    {"class": (vnode.state.active == category)?"active":""},
-                    m("a",
-                      {onclick: set_active(category)},
-                      registry.categories[category].name,
-                      (vnode.attrs.patch && !registry.categories[category].readonly)?m("button.btn.btn-clear", {onclick: delete_category(category)}):null)
+                  m(CUI.TabItem,
+                    {label: [
+                        registry.categories[category].name,
+                        ((!vnode.attrs.patch) || registry.categories[category].readonly)?null:
+                            m(CUI.Button,
+                              {basic: true,
+                               compact: true,
+                               size: 'sm',
+                               onclick: () => delete_category(category),
+                               label: m(CUI.Icon, {name: CUI.Icons.X})}
+                             )
+                    ],
+                     active: vnode.state.active === category}
                    )
               ),
-              vnode.attrs.patch?html`
-<li class="tab-item tab-action">
-  <div class="dropdown">
-    <span class="btn btn-link dropdown-toggle" tabindex="0">
-      <i class="icon icon-plus" />
-    </span>
-    <ul class="menu text-left">
-    ${ new_categories.map(
-         ([key, value]) => html`
-         <li class="menu-item">
-           <button class="btn btn-link" onclick=${ new_category(key) }>
-           ${ value.name }
-           </button>
-         </li>`) }
-    </ul>
-  </div>
-</li>`:null),
+              m(CUI.ControlGroup,
+                {style: 'flex-grow: 1; justify-content: flex-end'},
+                m(CUI.PopoverMenu,
+                  {closeOnContentClick: true,
+                   trigger:
+                   m(CUI.Button,
+                     {basic: true,
+                      label: m(CUI.Icon, {name: CUI.Icons.PLUS})}
+                    ),
+                   content: new_categories.map(
+                       ([key, value]) =>
+                       m(CUI.MenuItem,
+                         {label: value.name,
+                          onclick: new_category(key)})
+                   )
+                  }
+                 )
+               )
+             ),
             (vnode.state.active && registry.categories[vnode.state.active].component)?
                 m(registry.categories[vnode.state.active].component,
                   {key: vnode.attrs.active, doc: vnode.attrs.doc, patch: vnode.attrs.patch, path: vnode.attrs.path})
                 :null
-        ]
+        ];
     }
 };
 

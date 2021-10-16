@@ -7,10 +7,15 @@ const Widget = {
                     m.request({method: "OPEN", url});
                 }
                 return [
-                    m("div.divider", {"data-content": "Media"}),
-                    m("div.btn-group.btn-group-block",
-                      m(m.route.Link, {"class": "btn btn-primary btn-sm", href: url}, "View"),
-                      m("button.btn.btn-sm", {onclick}, "Open Containing Folder"))
+                    m("h4", "Media"),
+                    m(CUI.ButtonGroup,
+                      m(CUI.Button,
+                        {label: "View",
+                         intent: "primary",
+                         onclick: () => m.route.set(url)}),
+                      m(CUI.Button,
+                        {label: "Open Containing Folder",
+                         onclick}))
                 ];
             }
         }

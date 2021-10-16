@@ -266,7 +266,7 @@ class MediaFileHandler(BaseHandler):
             for mime_type in accept_header.split(","):
                 mime_type = mime_type.strip().split(";", 1)[0]
                 if mime_type == 'text/html':
-                    if self.request.environ.get("HTTP_REFERER", None) != f'{request.environ["wsgi.url_scheme"]}://{request.environ["HTTP_HOST"]}{request.environ["PATH_INFO"]}':
+                    if self.request.environ.get("HTTP_REFERER", None) != f'{self.request.environ["wsgi.url_scheme"]}://{self.request.environ["HTTP_HOST"]}{self.request.environ["PATH_INFO"]}':
                         return super().get()
                     mod = config.media_formats.get(f".{ext}", None)
                     context = {"title": title +"." + ext if title else filename}

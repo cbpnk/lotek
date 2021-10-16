@@ -2,16 +2,17 @@ const Debug = {
     oninit: function(vnode) {
         vnode.state.active = false;
         vnode.state.value = "";
-        vnode.state.disabled = "disabled";
+        vnode.state.disabled = true;
     },
 
     view: function(vnode) {
         function oninput(event) {
             vnode.state.value = event.target.value;
-            vnode.state.disabled = "disabled";
+            console.log(vnode.state.value);
+            vnode.state.disabled = true;
             try {
                 JSON.parse(vnode.state.value);
-                vnode.state.disabled = "";
+                vnode.state.disabled = false;
             } catch(e) {
             }
         }
@@ -57,20 +58,31 @@ var JSONView = {
 </body>
 </html>`;
 
-        return (vnode.attrs.patch)?
-            m("div.off-canvas",
-              html`<button class="off-canvas-toggle btn btn-primary" onclick=${ function() { vnode.state.active=true; } }>
-Debug
-</button>`,
-              (!vnode.state.active)?null:
-              html`<div class="off-canvas-sidebar d-flex active" style="flex-direction: column;">
-  <textarea oninput=${ oninput }>${ vnode.state.value }</textarea>
-  <button class="btn btn-sm btn-primary" onclick=${ onclick } disabled="${ vnode.state.disabled }">PATCH</button>
-  <iframe style="margin: 0; padding: 0; border: none; height: 100%;" srcdoc=${ srcdoc } />
-</div>`,
-              html`<button class="off-canvas-overlay" onclick=${ function() { vnode.state.active = false; } }>
-  <i class="icon icon-arrow-left" />
-</button>`):null;
+        return (!vnode.attrs.patch)?null:
+            [
+                m(CUI.Button,
+                  {label: "Debug",
+                   onclick: () => {vnode.state.active = true;}}),
+                m(CUI.Drawer,
+                  {isOpen: vnode.state.active,
+                   position: "left",
+                   onClose: () => {vnode.state.active = false},
+                   content: [
+                       m(CUI.TextArea,
+                         {oninput: oninput,
+                          value: vnode.state.value}),
+                       m(CUI.Button,
+                         {label: "PATCH",
+                          intent: "primary",
+                          disabled: vnode.state.disabled,
+                          onclick: onclick}),
+                       m("iframe",
+                         {style: "margin: 0; padding: 0; border: none; height: 100%;",
+                          srcdoc: srcdoc})
+                   ]
+                  }
+                 )
+            ];
     }
 }
 

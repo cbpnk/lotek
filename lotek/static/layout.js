@@ -2,33 +2,28 @@ const Layout = {
     view: function(vnode) {
         const path = window.location.pathname;
 
-        return html`
-${vnode.children}
-<header>
-  <ul class=tab>
-    ${ registry.links.map(
-         (link) =>
-         html`
-         <li class="tab-item ${path===link.url?"active":""}">
-            <${m.route.Link} href=${link.url}>${ link.name }<//>
-         </li>
-         `
-       )
-    }
-    <li class="tab-item tab-action">
-      ${ registry.actions.map((action) => m(action, {})) }
-    </li>
-  </ul>
-</header>
-<footer class=py-2/>`;
+        return [
+            vnode.children,
+            m("header",
+              m(CUI.Tabs,
+                {align: "left",
+                 bordered: true},
+                registry.links.map(
+                    (link) =>
+                    m(CUI.TabItem,
+                      {label: link.name,
+                       active: path == link.url,
+                       onclick: () => m.route.set(link.url)})
+                ),
+                m(CUI.ControlGroup,
+                  {style: 'flex-grow: 1; justify-content: flex-end'},
+                  registry.actions.map((action) => m(action)))
+               )
+             ),
+            m("footer.py-2")
+        ];
     }
 };
-
-function authenticate(args, requestedPath, route) {
-    if (!authenticated) {
-        return Authenticate;
-    }
-}
 
 function main() {
     m.route.prefix = "";

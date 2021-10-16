@@ -4,7 +4,7 @@ import {Title} from "/static/view.js";
 const Widget = {
     view: function(vnode) {
         return [
-            m("div.divider", {"data-content": "Tags"}),
+            m("h4", "Tags"),
             m(AutoCompleteInput,
               {paths: vnode.attrs.doc.tag_i,
                query: "category_i:tag",

@@ -4,9 +4,12 @@ const Title = {
             "h2",
             (vnode.attrs.doc.title_t || ["Untitled"])[0],
             (vnode.attrs.edit)?
-                m("button.btn.btn-link",
-                  {onclick: vnode.attrs.edit},
-                  m("i.icon.icon-edit"))
+                m(CUI.Button,
+                  {basic: true,
+                   intent: "primary",
+                   label: m(CUI.Icon, {name: CUI.Icons.EDIT}),
+                   onclick: vnode.attrs.edit}
+                 )
                 :null);
     }
 };

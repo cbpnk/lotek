@@ -9,6 +9,12 @@ const Action = {
     },
 
     view: function(vnode) {
+        const span = {
+            xs: 12,
+            sm: 12,
+            md: 6
+        };
+
         let username = USER_ID;
 
         function logout() {
@@ -34,8 +40,7 @@ const Action = {
         }
 
         if (USER_ID) {
-            function onsubmit(e) {
-                e.preventDefault();
+            function onsubmit() {
                 if (vnode.state.new_password !== vnode.state.confirm) {
                     vnode.state.error["change-password"] = "Password mismatch";
                     return;
@@ -62,57 +67,76 @@ const Action = {
                 );
             }
 
-            return html`
-<div class="dropdown dropdown-right text-left">
-  <button class="btn btn-link btn-sm dropdown-toggle" tabindex="0">
-    ${ username }
-    <i class="icon icon-caret" />
-  </button>
-  <ul class="menu">
-    <li class="menu-item">
-      <${m.route.Link} href=${ m.buildPathname("/~:username", {username}) }>Profile<//>
-    </li>
-    <li class="menu-item">
-      <a onclick=${ show_modal("change-password") }>Change password</a>
-    </li>
-    <li class="menu-item">
-      <a onclick=${ logout }>Sign out</a>
-    </li>
-  </ul>
-</div>
-<div class="modal text-left ${ vnode.state.active["change-password"]?"active":"" }">
-  <a class="modal-overlay" onclick=${ hide_modal("change-password") }></a>
-  <div class="modal-container">
-    <div class="modal-header">
-      <button class="btn btn-clear float-right" onclick=${ hide_modal("change-password") }></button>
-      <div class="modal-title">Change Password</div>
-    </div>
-    <div class="modal-body">
-      <form onsubmit=${ onsubmit }>
-        ${ vnode.state.error["change-password"]?html`<div class="toast toast-error">${ vnode.state.error["change-password"] }</div>`:null }
-        <div class="form-group">
-          <label class="form-label">Password</label>
-          <input class="form-input" type="password" oninput=${ function(e) { vnode.state.password = e.target.value; } } value="${ vnode.state.password }" />
-        </div>
-        <div class="form-group">
-          <label class="form-label">New Password</label>
-          <input class="form-input" type="password" oninput=${ function(e) { vnode.state.new_password = e.target.value; } } value="${ vnode.state.new_password }" />
-        </div>
-        <div class="form-group">
-          <label class="form-label">Confirm</label>
-          <input class="form-input" type="password" oninput=${ function(e) { vnode.state.confirm = e.target.value; } } value="${ vnode.state.confirm }" />
-        </div>
-        <div class="form-group">
-          <button class="form-input btn btn-primary">Submit</button>
-        </div>
-      </form>
-    </div>
-  </div>
-</div>`;
+            return [
+                m(CUI.PopoverMenu,
+                  {closeOnContentClick: true,
+                   trigger: m(CUI.Button,
+                              {basic: true,
+                               label:
+                               [username,
+                                m(CUI.Icon, {name: CUI.Icons.CHEVRON_DOWN})]}),
+                   content: [
+                       m(CUI.MenuItem,
+                         {label: "Profile",
+                          onclick: () => m.route.set(m.buildPathname("/~:username", {username}))}),
+                       m(CUI.MenuItem,
+                         {iconRight: CUI.Icons.EDIT,
+                          label: "Change password",
+                          onclick: show_modal("change-password")}),
+                       m(CUI.MenuItem,
+                         {iconRight: CUI.Icons.LOG_OUT,
+                          label: "Sign out",
+                          onclick: () => logout()})
+                   ]},
+                 ),
+                m(CUI.Dialog,
+                  {isOpen: vnode.state.active["change-password"],
+                   onClose: hide_modal("change-password"),
+                   title: "Change password",
+                   content: [
+                       m(CUI.FormGroup, {span},
+                         m(CUI.FormLabel, {for: 'password'}, "Password"),
+                         m(CUI.Input,
+                           {contentLeft: m(CUI.Icon, {name: CUI.Icons.LOCK}),
+                            type: "password",
+                            id: 'password',
+                            name: 'password',
+                            oninput: (e) => { vnode.state.password = e.target.value; },
+                            value: vnode.state.password}
+                          )
+                        ),
+                       m(CUI.FormGroup, {span},
+                         m(CUI.FormLabel, {for: 'new_password'}, "New Password"),
+                         m(CUI.Input,
+                           {contentLeft: m(CUI.Icon, {name: CUI.Icons.LOCK}),
+                            type: "password",
+                            id: 'new_password',
+                            name: 'new_password',
+                            oninput: (e) => { vnode.state.new_password = e.target.value; },
+                            value: vnode.state.new_password}
+                          )
+                        ),
+                       m(CUI.FormGroup, {span},
+                         m(CUI.FormLabel, {for: 'confirm'}, "Confirm New Password"),
+                         m(CUI.Input,
+                           {contentLeft: m(CUI.Icon, {name: CUI.Icons.LOCK}),
+                            type: "password",
+                            id: 'confirm',
+                            name: 'confirm',
+                            oninput: (e) => { vnode.state.confirm = e.target.value; },
+                            value: vnode.state.confirm}
+                          )
+                        )
+                   ],
+                   footer: m(CUI.Button,
+                             {label: "Submit",
+                              onclick: onsubmit})
+                  }
+                 )
+            ];
         }
 
         function onsubmit(e) {
-            e.preventDefault();
             m.request(
                 {method: "POST",
                  url: "/auth/login",
@@ -134,35 +158,43 @@ const Action = {
             );
         }
 
-        return html`
-<div class="input-group input-inline">
-  <button class="btn btn-sm" onclick=${ show_modal("sign-in") }>Sign in</button>
-</div>
-<div class="modal text-left ${ vnode.state.active["sign-in"]?"active":"" }">
-  <a class="modal-overlay" onclick=${ hide_modal("sign-in") }></a>
-  <div class="modal-container">
-    <div class="modal-header">
-      <button class="btn btn-clear float-right" onclick=${ hide_modal("sign-in") }></button>
-      <div class="modal-title">Sign in</div>
-    </div>
-    <div class="modal-body">
-      <form onsubmit=${ onsubmit }>
-        ${ vnode.state.error["sign-in"]?html`<div class="toast toast-error">${ vnode.state.error["sign-in"] }</div>`:null }
-        <div class="form-group">
-          <label class="form-label">Username</label>
-          <input class="form-input" oninput=${ function(e) { vnode.state.username = e.target.value; } } value="${ vnode.state.username }" />
-        </div>
-        <div class="form-group">
-          <label class="form-label">Password</label>
-          <input class="form-input" type="password" oninput=${ function(e) { vnode.state.password = e.target.value; } } value="${ vnode.state.password }" />
-        </div>
-        <div class="form-group">
-          <button class="form-input btn btn-primary">Submit</button>
-        </div>
-      </form>
-    </div>
-  </div>
-</div>`;
+        return [
+            m(CUI.Button,
+              {label: 'Sign in',
+               onclick: show_modal("sign-in")}),
+            m(CUI.Dialog,
+              {isOpen: vnode.state.active["sign-in"],
+               onClose: hide_modal("sign-in"),
+               title: "Sign in",
+               content: [
+                   m(CUI.FormGroup, {span},
+                     m(CUI.FormLabel, {for: 'username'}, "Username"),
+                     m(CUI.Input,
+                       {contentLeft: m(CUI.Icon, {name: CUI.Icons.USER}),
+                        id: 'username',
+                        name: 'username',
+                        oninput: (e) => { vnode.state.username = e.target.value; },
+                        value: vnode.state.username}
+                      )
+                    ),
+                   m(CUI.FormGroup, {span},
+                     m(CUI.FormLabel, {for: 'password'}, "Password"),
+                     m(CUI.Input,
+                       {contentLeft: m(CUI.Icon, {name: CUI.Icons.LOCK}),
+                        type: "password",
+                        id: 'password',
+                        name: 'password',
+                        oninput: (e) => { vnode.state.password = e.target.value; },
+                        value: vnode.state.password}
+                      )
+                    )
+               ],
+               footer: m(CUI.Button,
+                         {label: "Submit",
+                          onclick: onsubmit})
+              }
+             )
+        ];
     }
 };
 
