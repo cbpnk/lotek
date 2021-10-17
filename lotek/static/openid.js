@@ -35,11 +35,15 @@ const Action = {
     }
 };
 
-export const actions = [Action];
-
-export const searches = [{name: "Users", query: "category_i:user"}];
-export const categories = {
-    user: {
-        name: "User",
-        readonly: true}
+const Login = {
+    oninit(vnode) {
+    },
+    view(vnode) {
+    }
 };
+
+export const logins = [
+    {name: "OpenID",
+     component: Login
+    }
+];

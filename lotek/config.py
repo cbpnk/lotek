@@ -60,7 +60,7 @@ def load_config(filename):
             code = compile(f.read(), filename, 'exec')
         exec(code, d)
 
-    d.setdefault('PLUGINS', ['user', 'media', 'link', 'tag', 'kanban', 'debug'])
+    d.setdefault('PLUGINS', ['user', 'openid', 'media', 'link', 'tag', 'kanban', 'debug'])
     d.setdefault('EDITOR', 'textarea')
     d.setdefault('TXT_FORMAT', 'markdown')
     d.setdefault('MEDIA_FORMATS', ['pdf', 'maff'])

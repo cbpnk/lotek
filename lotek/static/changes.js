@@ -31,7 +31,7 @@ class Changes extends Reload {
     }
 
     load(vnode) {
-        return () => m.request(
+        return () => request(
             {method: "POST",
              url: "/changes"
             }

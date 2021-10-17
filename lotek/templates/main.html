@@ -21,6 +21,42 @@ const registry = {};
 registry.registry = registry;
 registry.onload = [];
 
+let start_retry = null;
+let wait_retry = null;
+
+async function request(options) {
+    options.headers = options.headers || {};
+    if ((options.method != "GET") && (options.method != "HEAD")) {
+        options.headers["X-CSRF-Token"] = CSRF_TOKEN;
+        options.headers["X-Lotek-Date"] = (new Date()).toUTCString();
+    }
+
+    while(true) {
+        try {
+            return await m.request(options);
+        } catch (error) {
+            if ((error.code === 0) || (error.code >= 500)) {
+                if (!start_retry) {
+                    wait_retry = new Promise(
+                        (resolve, reject) => {
+                            start_retry = function() {
+                                start_retry = null;
+                                resolve();
+                            }
+                        }
+                    );
+                }
+                await wait_retry;
+                continue
+            }
+            if (error.code === 403) {
+                USER_ID = null;
+            }
+            throw(error);
+        }
+    }
+}
+
 window.addEventListener(
     'load',
     function() {

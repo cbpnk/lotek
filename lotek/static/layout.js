@@ -25,6 +25,36 @@ const Layout = {
     }
 };
 
+const Authenticate = {
+    oninit(vnode) {
+        vnode.state.active = 0;
+    },
+
+    view(vnode) {
+        return [
+            m(CUI.Dialog,
+              {title: "Log in",
+               isOpen: true,
+               hasCloseButton: false,
+               content: [
+                   m(CUI.Tabs,
+                     {align: "left", bordered: true},
+                     registry.logins.map(
+                         (login, index) =>
+                         m(CUI.TabItem,
+                           {label: login.name,
+                            active: vnode.state.active === index,
+                            onclick: () => { vnode.state.active = index; } })
+                     )
+                    ),
+                   m(registry.logins[vnode.state.active].component)
+               ]
+              }
+             )
+        ];
+    }
+};
+
 function main() {
     m.route.prefix = "";
     m.route(
@@ -35,7 +65,22 @@ function main() {
                 ([key, value]) =>
                 [key,
                  {render: function(vnode) {
-                      return m(Layout, value(vnode));
+                     return [
+                         (start_retry)?
+                             m(CUI.Toaster,
+                               {clearOnEscapeKey: false,
+                                toasts: [
+                                    m(CUI.Toast,
+                                      {timeout: 0,
+                                       message: [
+                                           "Something went wrong, ",
+                                           m(CUI.Button,
+                                             {label: "Try Again",
+                                              onclick: start_retry})]
+                                      })]})
+                             :null,
+                         (USER_ID)?m(Layout, value(vnode)):m(Authenticate)
+                     ];
                   }}]
             ))
     );
@@ -44,7 +89,8 @@ function main() {
 export const registry = {
     routes: {},
     links: [],
-    actions: []
+    actions: [],
+    logins: []
 };
 
 export const onload = [main];
