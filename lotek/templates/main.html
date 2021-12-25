@@ -1,99 +1,34 @@
-@require(EDITOR, EDITOR_URL, PLUGINS, USER_ID, CSRF_TOKEN)
+@require(PLUGINS, USER, CSRF_TOKEN, FORMATS)
 <!doctype html>
 <html>
 <head>
 <title></title>
 <script src="/static/vendor/npm/mithril@@2.0.4/mithril.js"></script>
+<script src="/static/vendor/npm/mithril@@2.0.4/stream/stream.js"></script>
 <script src="/static/vendor/npm/htm@@3.1.0/dist/htm.js"></script>
 <script src="/static/vendor/npm/construct-ui@@0.3.1/lib/construct-ui.min.js"></script>
 <link rel="stylesheet" href="/static/vendor/npm/construct-ui@@0.3.1/lib/index.css">
-<link rel="stylesheet" href="/static/vendor/npm/spectre.css@@0.5.9/dist/spectre.min.css">
-<link rel="stylesheet" href="/static/vendor/npm/spectre.css@@0.5.9/dist/spectre-exp.min.css">
-<link rel="stylesheet" href="/static/vendor/npm/spectre.css@@0.5.9/dist/spectre-icons.min.css">
 <link rel="stylesheet" href="/static/base.css">
 
 <script type="text/javascript">
-let USER_ID = @USER_ID;
-const CSRF_TOKEN = @CSRF_TOKEN;
-const EDITOR_URL = @EDITOR_URL;
-const html = htm.bind(m);
-const registry = {};
-registry.registry = registry;
-registry.onload = [];
-
-let start_retry = null;
-let wait_retry = null;
-
-async function request(options) {
-    options.headers = options.headers || {};
-    if ((options.method != "GET") && (options.method != "HEAD")) {
-        options.headers["X-CSRF-Token"] = CSRF_TOKEN;
-        options.headers["X-Lotek-Date"] = (new Date()).toUTCString();
-    }
-
-    while(true) {
-        try {
-            return await m.request(options);
-        } catch (error) {
-            if ((error.code === 0) || (error.code >= 500)) {
-                if (!start_retry) {
-                    wait_retry = new Promise(
-                        (resolve, reject) => {
-                            start_retry = function() {
-                                start_retry = null;
-                                resolve();
-                            }
-                        }
-                    );
-                }
-                await wait_retry;
-                continue
-            }
-            if (error.code === 403) {
-                USER_ID = null;
-            }
-            throw(error);
-        }
-    }
-}
-
-window.addEventListener(
-    'load',
-    function() {
-        (async function() {
-            const plugins = [
-                "/static/layout.js",
-                "/static/view.js",
-                "/static/changes.js",
-                "/static/title.js",
-                "/static/new.js",
-                "/static/search.js",
-                "/static/category.js",
-@for p in PLUGINS:
-                "/static/" + @p +".js",
-@end
-                "/static/uncategorized.js",
-                "/static/" + @EDITOR + ".js"
-            ];
-
-            for (const filename of plugins) {
-                const plugin = await import(filename);
-                for (let name in registry) {
-                    if (registry[name] instanceof Array) {
-                        registry[name].push(...(plugin[name] || []));
-                    } else {
-                        Object.assign(registry[name], plugin[name] || {});
-                    }
-                }
-            }
-
-            for (const f of registry.onload) {
-                f();
-            }
-        })();
-    }
-);
+let USER = @USER!json!e;
+const CSRF_TOKEN = @CSRF_TOKEN!json!e;
+const PLUGINS = [
+    "layout",
+    "changes",
+    "search",
+    "file",
+    "wopi",
+    "meta",
+    "annotation",
+].concat(@PLUGINS!json!e).concat([
+    "record",
+    "uncategorized",
+]);
+const FORMATS = @FORMATS!json!e;
 </script>
+
+<script src="/static/init.js"></script>
 </head>
 <body>
 </body>

@@ -1,85 +1,72 @@
-import {Reload} from "/static/reload.js";
-
 const icons = {
-    "add": "icon-plus",
-    "modify": "icon-edit",
-    "delete": "icon-delete"
-};
+    add: "PLUS",
+    modify: "EDIT",
+    delete: "X"};
 
-function format_link(item) {
-    if (item.link) {
-        return m(m.route.Link, {href: "/" + item.link}, item.title || item.path);
-    } else {
-        return m("span", item.path)
-    }
-}
 
 function format_author(author) {
-    if (author.path) {
+    if (author.id) {
         return m(m.route.Link,
-                 {href: m.buildPathname("/:path", {path: author.path})},
+                 {href: m.buildPathname("/~:id", {id: author.id})},
                   author.name)
     }
     return m("span", author.name, " <", author.email, ">")
 }
 
 
-class Changes extends Reload {
+const Changes = {
     oninit(vnode) {
         document.title = 'Recent Changes';
-        super.oninit(vnode);
-    }
-
-    load(vnode) {
-        return () => request(
+        vnode.state.changes = [];
+        request(
             {method: "POST",
-             url: "/changes"
+             url: "/changes/"}
+        ).then(
+            function(result) {
+                vnode.state.changes = result;
             }
-        );
-    }
-
-    render(changes) {
-        return m("div.timeline",
-                 changes.map(
-                     (change) => html`
-<div class="timeline-item">
-  <div class="timeline-left">
-    <span class="timeline-icon icon-lg">
-      <i class="icon" />
-    </span>
-  </div>
-  <div class="timeline-content">
-    <div class="tile">
-      <div class="tile-content">
-        <p class="tile-subtitle">
-          ${ new Date(change.time * 1000).toLocaleString() }
-        </p>
-        <p class="tile-title">
-          <i class="icon icon-people" />
-          ${ format_author(change.author) }
-        </p>
-        <p class="tile-title">
-          ${ change.message }
-        </p>
-        ${ change.changes.map(
-               (item) => html`
-<p class="tile-title">
- <i class="icon ${icons[item.type]}" />
-${ format_link(item) }
-</p>`) }
-      </div>
-    </div>
-  </div>
-</div>`));
-    }
+        )
+    },
 
     view(vnode) {
-        return m("main", super.view(vnode));
+        return m("div.container", {style: "position: relative;"},
+                 m("div.container", {style: "position: absolute; overflow-y: auto;"},
+                   m("div.timeline",
+                     vnode.state.changes.map(
+                         (change) =>
+                         m("div.event",
+                           m("div.title.row-flex", {style: "justify-content: space-between;"},
+                             m("div", format_author(change.author)),
+                             m("div", new Date(change.time * 1000).toLocaleString())
+                            ),
+                           m("div", change.message),
+                           m(CUI.List,
+                             change.changes.map(
+                                 (item) =>
+                                 m(CUI.ListItem,
+                                   {label:
+                                    m(m.route.Link,
+                                      {href: m.buildPathname("/:id", {id: item.id})},
+                                      item.id
+                                     ),
+                                    contentLeft:
+                                    m(CUI.Icon,
+                                      {name: CUI.Icons[icons[item.type]]}
+                                     )
+                                   }
+                                  )
+                             )
+                            )
+                          )
+                     )
+                    )
+                  )
+                );
     }
 }
 
-export const routes = {
-    "/changes": (vnode) => m(Changes),
-}
+export const routes = [
+    ["/changes/", (vnode) => m(Changes)]
+];
 
-export const links = [{url: "/changes", name: "Recent Changes"}]
+export const links = [{url: "/changes/", name: "Recent Changes"}];

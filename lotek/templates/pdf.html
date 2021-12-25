@@ -1,13 +1,13 @@
-@require(title)
+@require(TITLE, PDF_URL, PROXY_PDF_URL, PDF_HTTP_HEADERS, access_token, hypothesis_url)
 <!doctype html>
 <html>
 <head>
-<title>@title!e</title>
+<title>@TITLE!e</title>
 <base target="_parent">
 <link rel="stylesheet" href="/static/vendor/gh/hypothesis/via@@master/via/static/vendor/pdfjs-2/web/viewer.css">
 <script type="application/json" class="js-hypothesis-config">
-{"assetRoot": "/static/vendor/npm/hypothesis@@1.810.0/",
- "sidebarAppUrl": "/static/app.html"
+{"assetRoot": "@{hypothesis_url}static/vendor/npm/hypothesis@@1.810.0/",
+ "sidebarAppUrl": "@{hypothesis_url}static/app.html"
 }
 </script>
 
@@ -15,19 +15,19 @@
 var hypothesisConfig = function() {
     return {
         services: [{
-            apiUrl: `${window.parent.location.protocol}//${window.parent.location.host}/hypothesis/api/`,
-            grantToken: localStorage.getItem('token'),
+            apiUrl: "@{hypothesis_url}hypothesis/api/",
+            grantToken: @access_token!json!e,
             sentry: {"enabled": false},
-            assetRoot: "/static/vendor/npm/hypothesis@@1.810.0/",
+            assetRoot: "@{hypothesis_url}static/vendor/npm/hypothesis@@1.810.0/",
         }]
     };
 };
-</script>
 
-<script>
-var PDF_URL = `${window.parent.location.protocol}//${window.parent.location.host}${window.parent.location.pathname}`;
-var PROXY_PDF_URL = PDF_URL;
-var CLIENT_EMBED_URL = '/static/vendor/npm/hypothesis@@1.810.0/build/boot.js';
+
+var PDF_URL = @PDF_URL!json!e;
+var PROXY_PDF_URL = @PROXY_PDF_URL!json!e;
+var PDF_HTTP_HEADERS = @PDF_HTTP_HEADERS!json!e;
+var CLIENT_EMBED_URL = '@{hypothesis_url}static/vendor/npm/hypothesis@@1.810.0/build/boot.js';
 
 document.addEventListener(
     'webviewerloaded',
@@ -37,11 +37,94 @@ document.addEventListener(
         window.PDFViewerApplicationOptions.set('imageResourcesPath', '/static/vendor/gh/hypothesis/via@@master/via/static/vendor/pdfjs-2/web/images/');
     }
 );
+
+document.addEventListener('webviewerloaded', function (event) {
+  var appOptions = window.PDFViewerApplicationOptions;
+  var app = window.PDFViewerApplication;
+
+  // Ensure that PDF.js viewer events such as "documentloaded" are dispatched
+  // to the DOM. The client relies on this.
+  appOptions.set('eventBusDispatchToDOM', true);
+
+  // Disable preferences support, as otherwise this will result in `eventBusDispatchToDOM`
+  // being overridden with the default value of `false`.
+  appOptions.set('disablePreferences', true);
+
+  // Prevent loading of default viewer PDF.
+  appOptions.set('defaultUrl', '');
+
+  // Read configuration rendered into template as global vars.
+  var proxyPdfUrl = window.PROXY_PDF_URL;
+  var pdfUrl = window.PDF_URL;
+  var httpHeaders = window.PDF_HTTP_HEADERS;
+  var clientEmbedUrl = window.CLIENT_EMBED_URL;
+
+  // Wait for the PDF viewer to be fully initialized and then load the Hypothesis client.
+  //
+  // This is required because the client currently assumes that `PDFViewerApplication`
+  // is fully initialized when it loads. Note that "fully initialized" only means
+  // that the PDF viewer application's components have been initialized. The
+  // PDF itself will still be loading, and the client will wait for that to
+  // complete before fetching annotations.
+  //
+  var pdfjsInitialized = new Promise(function (resolve) {
+    // Poll `app.initialized` as there doesn't appear to be an event that
+    // we can listen to.
+    var timer = setInterval(function () {
+      if (app.initialized) {
+        clearTimeout(timer);
+        resolve();
+      }
+    }, 20);
+  });
+
+  pdfjsInitialized.then(function () {
+    // Prevent PDF.js' `Promise` polyfill, if it was used, from being
+    // overwritten by the one that ships with Hypothesis (both from core-js).
+    //
+    // See https://github.com/hypothesis/via/issues/81#issuecomment-531121534
+    if (
+      typeof Promise === 'function' &&
+      typeof PromiseRejectionEvent === 'undefined'
+    ) {
+      window.PromiseRejectionEvent = function FakePromiseRejectionEvent(
+        type,
+        options
+      ) {
+        // core-js doesn't actually use this, it just tests for `typeof PromiseRejectionEvent`
+        console.warn('Tried to construct fake `PromiseRejectionEvent`');
+      };
+    }
+
+    // Load the Hypothesis client.
+    var embedScript = document.createElement('script');
+    embedScript.src = clientEmbedUrl;
+    document.body.appendChild(embedScript);
+
+    // Load the PDF specified in the URL.
+    //
+    // This is done after the viewer components are initialized to avoid some
+    // race conditions in `PDFViewerApplication` if the PDF finishes loading
+    // (eg. from the HTTP cache) before the viewer is fully initialized.
+    //
+    // See https://github.com/mozilla/pdf.js/wiki/Frequently-Asked-Questions#can-i-specify-a-different-pdf-in-the-default-viewer
+    // and https://github.com/mozilla/pdf.js/issues/10435#issuecomment-452706770
+    app.open({
+      // Load PDF through Via to work around CORS restrictions.
+      url: proxyPdfUrl,
+
+      // Make sure `PDFViewerApplication.url` returns the original URL, as this
+      // is the URL associated with annotations.
+      originalUrl: pdfUrl,
+    }, {httpHeaders});
+  });
+});
 </script>
 
-<script src="/static/vendor/gh/hypothesis/via@@master/via/static/js/pdfjs-init.js"></script>
+<!-- <script src="/static/vendor/gh/hypothesis/via@@master/via/static/js/pdfjs-init.js"></script> -->
 <link rel="resource" type="application/l10n" href="/static/vendor/gh/hypothesis/via@@master/via/static/vendor/pdfjs-2/web/locale/locale.properties">
 <script src="/static/vendor/gh/hypothesis/via@@master/via/static/vendor/pdfjs-2/build/pdf.js"></script>
+<script src="/static/vendor/gh/hypothesis/via@@master/via/static/vendor/pdfjs-2/web/viewer.js"></script>
 </head>
 
 <body tabindex="1" class="loadingInProgress">

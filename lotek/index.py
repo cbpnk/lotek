@@ -1,23 +1,17 @@
 import sys
 import os
 from subprocess import Popen
+from datetime import datetime, timezone
+import json
 
+from whoosh.query import Wildcard
+from whoosh.qparser import MultifieldParser, plugins
+from whoosh.index import open_dir, create_in, EmptyIndexError, LockError
+from whoosh.analysis import unstopped
+from whoosh.fields import Schema, ID, NUMERIC, BOOLEAN
+from whoosh import formats
 
-try:
-    import uwsgi
-
-    from uwsgidecorators import mulefunc
-
-    @mulefunc
-    def spawn_indexer():
-        run_indexer()
-except ImportError:
-    def spawn_indexer():
-        from .config import config
-        env = os.environ.copy()
-        if config.CONFIG_FILE:
-            env["LOTEK_CONFIG"] = config.CONFIG_FILE
-        Popen(["python", "-m", __package__, "index"], executable=sys.executable, env=env)
+from .fields import NGRAMCJKTEXT, ISO8601
 
 
 def tokenlist(values, analyzer, chars=False, positions=False, **kwargs):
@@ -31,115 +25,145 @@ def tokenlist(values, analyzer, chars=False, positions=False, **kwargs):
         if positions:
             kwargs['start_pos'] = t.pos + 2
 
-def tokens(value, analyzer, kwargs):
-    from whoosh.analysis import unstopped
 
+def tokens(value, analyzer, kwargs):
     if isinstance(value, (tuple, list)):
         gen = tokenlist(value, analyzer, **kwargs)
     else:
         gen = analyzer(value, **kwargs)
     return unstopped(gen)
 
-def run_indexer():
-    from .config import config
-    from whoosh.index import open_dir, create_in, EmptyIndexError, LockError
-    from markdown import Markdown
-    from datetime import datetime, timezone
-    import json
+formats.tokens = tokens
 
-    INDEX_ROOT = config._config.INDEX_ROOT
 
-    repo = config.repo
-    parser = config.parser
-
-    from whoosh import formats
-    formats.tokens = tokens
-
-    from .fields import NGRAMCJKTEXT, ISO8601
-
-    try:
-        ix = open_dir(INDEX_ROOT)
-    except EmptyIndexError:
-        from whoosh.fields import Schema, ID, NUMERIC
-        schema = Schema(
-            path=ID(unique=True, stored=True),
-            content=NGRAMCJKTEXT(stored=True))
-        schema.add("*_i", ID(stored=True), glob=True)
-        schema.add("*_t", NGRAMCJKTEXT(stored=True), glob=True)
-        schema.add("*_n", NUMERIC(stored=True), glob=True)
-        schema.add("*_d", ISO8601(stored=True), glob=True)
-        os.makedirs(INDEX_ROOT, exist_ok=True)
-        ix = create_in(INDEX_ROOT, schema)
-
-    while True:
-        try:
-            writer = ix.writer()
-        except LockError:
-            return
-
-        with writer:
-            head = repo.get_latest_commit()
-            indexed_commit = repo.get_indexed_commit()
-            if head == indexed_commit:
-                return
-
-            for path, content, is_new in repo.diff_commit(indexed_commit, head):
-                if os.path.basename(path).startswith("."):
-                    continue
-
-                if path.endswith(".h.json"):
-                    annotation = json.loads(content)
-                    date = datetime.fromisoformat(annotation["created"]).astimezone(timezone.utc)
-                    func = writer.add_document if is_new else writer.update_document
-                    basepath = annotation["uri"][1:] + "#annotations:"
-                    annotation_id = path[:-7]
-
-                    func(
-                        path=basepath + annotation_id,
-                        content=annotation["text"],
-                        category_i=["annotation"],
-                        group_i=[annotation["group"]],
-                        created_d=[date],
-                        tag_t=annotation["tags"],
-                        reference_i=[basepath+r for r in annotation.get("references", [])],
-                        uri_i=[annotation["uri"]]+[link["href"] for link in annotation.get("document", {}).get("link", [])]
-                    )
-                elif path.endswith(".txt") or path.startswith("~"):
-                    metadata, html = parser.convert(content)
-                    func = writer.add_document if is_new else writer.update_document
-                    func(path=path, **metadata)
-                else:
-                    if is_new:
-                        from .utils import index_file
-                        index_file(path, writer.add_document)
-
-            repo.update_indexed_commit(indexed_commit, head)
-
+def flatten(data, prefix=()):
+    for k, v in data.items():
+        key = prefix+(k,)
+        if isinstance(v, dict):
+            yield from flatten(v, key)
+        else:
+            yield '.'.join(key), v
 
 class Index:
 
-    def __init__(self, config):
-        from whoosh.index import open_dir
-        from whoosh.qparser import MultifieldParser, GtLtPlugin
-        self.ix = open_dir(config.INDEX_ROOT)
-        self.qp = MultifieldParser(["title_t", "content"], schema=self.ix.schema)
-        self.qp.add_plugin(GtLtPlugin())
+    def __init__(self, path, repo, formats):
+        try:
+            ix = open_dir(path)
+        except EmptyIndexError:
+            schema = Schema(
+                id=ID(unique=True, stored=True),
+                type=ID(stored=True),
+                content=NGRAMCJKTEXT(stored=True))
+            schema.add("*_r", ID(stored=True), glob=True)
+            schema.add("*_s", ID(stored=True), glob=True)
+            schema.add("*_t", NGRAMCJKTEXT(stored=True), glob=True)
+            schema.add("*_i", NUMERIC(numtype=int, bits=64, stored=True), glob=True)
+            schema.add("*_f", NUMERIC(numtype=float, bits=64, stored=True), glob=True)
+            schema.add("*_d", ISO8601(stored=True), glob=True)
+            schema.add("*_b", BOOLEAN(stored=True), glob=True)
+            os.makedirs(path, exist_ok=True)
+            ix = create_in(path, schema)
+        self.ix = ix
+        self.repo = repo
+        self.formats = formats
 
-    def search(self, query, *, highlighter=None, **kwargs):
+        self.qp = MultifieldParser(
+            ["name_t", "content"],
+            schema=self.ix.schema,
+            plugins=[
+                plugins.WhitespacePlugin(),
+                plugins.SingleQuotePlugin(),
+                plugins.FieldsPlugin(r"(?P<text>(?:\w|\.)+|[*]):"),
+                plugins.WildcardPlugin(),
+                plugins.PhrasePlugin(),
+                plugins.RangePlugin(),
+                plugins.GroupPlugin(),
+                plugins.OperatorsPlugin(),
+                plugins.BoostPlugin(),
+                plugins.EveryPlugin(),
+                plugins.GtLtPlugin(),
+                plugins.FieldAliasPlugin({"name_t": ["name"], "ext_s": ["ext"], "size_i": ["size"]})
+            ]
+        )
+
+    def update(self):
+        repo = self.repo
+        while True:
+            with self.ix.searcher() as searcher:
+                try:
+                    writer = self.ix.writer()
+                except LockError:
+                    return
+
+                with writer:
+                    head = repo.get_latest_commit()
+                    indexed_commit = repo.get_indexed_commit()
+                    if head == indexed_commit:
+                        return
+
+                    for change_type, info in repo.commit_changes(indexed_commit, head):
+                        if change_type in ('add', 'modify'):
+                            props = info.props
+                            if props["type"] == 'file':
+                                attrs = props.get("attrs", {})
+                                attrs["meta"] = props.get("meta", {})
+                                doc = dict(flatten(attrs))
+                                doc["id"] = info.record_id
+                                doc["type"] = 'file'
+
+                                for key, field in {"ext": "ext_s", "name": "name_t", "size": "size_i"}.items():
+                                    value = props.pop(key, None)
+                                    if value is not None:
+                                        doc[field] = value
+
+                                ext = info.ext
+                                if ext:
+                                    doc["content"] = ""
+                                    writer.delete_by_query(Wildcard("id", f"{info.record_id}#*"))
+                                    with repo.open(info) as f:
+                                        for fragment, type, content in getattr(self.formats, ext).extract_content(f):
+                                            if not fragment:
+                                                doc["content"] = content
+                                                continue
+                                            writer.add_document(
+                                                id=f"{info.record_id}#{fragment}",
+                                                type=type,
+                                                content=content)
+                                else:
+                                    doc["content"] = (searcher.document(id=info.record_id) or {}).get("content", "")
+
+                                writer.update_document(**doc)
+                            elif props["type"] == "annotation":
+                                created_date = datetime.fromisoformat(props["created"]).astimezone(timezone.utc)
+                                updated_date = datetime.fromisoformat(props["updated"]).astimezone(timezone.utc)
+
+                                writer.update_document(
+                                    id=info.record_id,
+                                    content=props["text"],
+                                    type="annotation",
+                                    group_s=props["group"],
+                                    created_d=created_date,
+                                    updated_d=updated_date,
+                                    tag_s=props["tags"],
+                                    reference_r=props.get("references", []),
+                                    uri_s=[props["uri"]]+[link["href"] for link in props.get("document", {}).get("link", [])])
+
+                        elif change_type == 'delete':
+                            writer.delete_by_term("id", info.record_id)
+                            writer.delete_by_query(Wildcard("id", f"{info.record_id}#*"))
+                        else:
+                            assert False, f'unknown change type {change_type}'
+
+                    repo.update_indexed_commit(indexed_commit, head)
+
+    def search(self, query, **kwargs):
         if isinstance(query, str):
             q = self.qp.parse(query)
         else:
             q = query
 
         with self.ix.searcher() as searcher:
-            results = searcher.search(q, collapse="path", **kwargs)
-            if highlighter:
-                results.highlighter = highlighter
+            results = searcher.search(q, collapse="id", **kwargs)
+
             for hit in results:
                 yield hit
-
-
-def run_search(query):
-    from .config import config
-    for hit in config.index.search(query):
-        print(hit["path"], hit.fields())

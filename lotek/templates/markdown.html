@@ -1,9 +1,10 @@
-@require(title, html, CSRF_TOKEN)
+@require(TITLE, HTML, WOPISrc, access_token, hypothesis_url)
 <!doctype html>
 <html>
 <head>
 <base target="_parent">
-<title>@title!e</title>
+<title>@TITLE!e</title>
+<link href="@WOPISrc!a" rel="canonical" />
 
 <style type='text/css'>
 html, body {
@@ -37,8 +38,8 @@ formatter = HtmlFormatter(linenos=True)
 @formatter.get_style_defs('.codehilite')
 </style>
 <script type="application/json" class="js-hypothesis-config">
-{"assetRoot": "/static/vendor/npm/hypothesis@@1.810.0/",
- "sidebarAppUrl": "/static/app.html"
+{"assetRoot": "@{hypothesis_url}static/vendor/npm/hypothesis@@1.810.0/",
+ "sidebarAppUrl": "@{hypothesis_url}static/app.html"
 }
 </script>
 
@@ -46,11 +47,11 @@ formatter = HtmlFormatter(linenos=True)
 var hypothesisConfig = function() {
     return {
         services: [{
-            apiUrl: `${window.parent.location.protocol}//${window.parent.location.host}/hypothesis/api/`,
-            grantToken: @CSRF_TOKEN,
+            apiUrl: "@{hypothesis_url}hypothesis/api/",
+            grantToken: @access_token!json!e,
             sentry: {"enabled": false},
-            assetRoot: "/static/vendor/npm/hypothesis@@1.810.0/",
-        }]
+            assetRoot: "@{hypothesis_url}static/vendor/npm/hypothesis@@1.810.0/",
+        }],
     };
 };
 
@@ -69,10 +70,12 @@ var MathJax = {
 </script>
 
 <script src="/static/vendor/npm/mathjax@@3/es5/tex-chtml.js"></script>
+
+<script src="@{hypothesis_url}static/vendor/npm/hypothesis@@1.810.0/build/boot.js"></script>
 </head>
 <body>
 <main>
-@html
+@HTML
 </main>
 </body>
 </html>

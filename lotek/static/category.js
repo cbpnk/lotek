@@ -1,103 +1,88 @@
-const CategoryTabs = {
-    oninit: function(vnode) {
-        vnode.state.active = (vnode.attrs.doc.category_i || [])[0];
-    },
-
-    view: function(vnode) {
+const Widget = {
+    view(vnode) {
         const new_categories = Object.entries(registry.categories).filter(
-            ([key, value]) => !(vnode.attrs.doc.category_i || []).includes(key) && !value.readonly);
-
-        function delete_category(category) {
-            return function() {
-                vnode.state.active = undefined;
-                vnode.attrs.patch(
-                    [{op: "remove",
-                      path: `/category_i/${vnode.attrs.doc.category_i.indexOf(category)}`}
-                    ].concat(
-                        Object.keys(vnode.attrs.doc).filter(
-                            (attr) =>
-                            attr.startsWith(`${category}__`)
-                        ).map(
-                            (attr) =>
-                            ({op: "remove", path: `/${attr}`}))
-                    )).then(
-                        function(doc) {
-                            vnode.state.active = (doc.category_i || [])[0];
-                        }
-                    );
-            }
-        }
+            ([key, value]) => !(vnode.attrs.file.category_s || []).includes(key));
 
         function new_category(key) {
             return function() {
                 vnode.attrs.patch(
-                    (vnode.attrs.doc.category_i)?
-                    [{op: "add", path: "/category_i/-", value: key}]
+                    (vnode.attrs.file.category_s)?
+                    [{op: "add", path: "/category_s/-", value: key}]
                     :
-                    [{op: "add", path: "/category_i", value: [key]}]
-                ).then(
-                    function(doc) {
-                        if (!vnode.state.active)
-                            vnode.state.active = (doc.category_i || [])[0];
-                    }
+                    [{op: "add", path: "/category_s", value: [key]}],
+                    {'Subject': `Add category ${key}`}
                 );
             }
         }
 
-        function set_active(key) {
+        function delete_category(key) {
             return function() {
-                vnode.state.active = key;
+                const ops = [
+                    {op: "remove",
+                     path: `/category_s/${vnode.attrs.file.category_s.indexOf(key)}`}
+                ];
+
+                if (vnode.attrs.file[key]) {
+                    ops.push(
+                        {op: "remove",
+                         path: `/${key}`
+                        }
+                    );
+                }
+
+                vnode.attrs.patch(ops, {'Subject': `Remove category ${key}`});
             }
         }
 
-        return [
-            m(CUI.Tabs,
-              {align: "left",
-               bordered: true},
-              (vnode.attrs.doc.category_i || []).map(
-                  (category) =>
-                  m(CUI.TabItem,
-                    {label: [
-                        registry.categories[category].name,
-                        ((!vnode.attrs.patch) || registry.categories[category].readonly)?null:
-                            m(CUI.Button,
-                              {basic: true,
-                               compact: true,
-                               size: 'sm',
-                               onclick: () => delete_category(category),
-                               label: m(CUI.Icon, {name: CUI.Icons.X})}
-                             )
-                    ],
-                     active: vnode.state.active === category}
-                   )
-              ),
-              m(CUI.ControlGroup,
-                {style: 'flex-grow: 1; justify-content: flex-end'},
-                m(CUI.PopoverMenu,
-                  {closeOnContentClick: true,
-                   trigger:
-                   m(CUI.Button,
-                     {basic: true,
-                      label: m(CUI.Icon, {name: CUI.Icons.PLUS})}
-                    ),
-                   content: new_categories.map(
-                       ([key, value]) =>
-                       m(CUI.MenuItem,
-                         {label: value.name,
-                          onclick: new_category(key)})
-                   )
-                  }
-                 )
-               )
-             ),
-            (vnode.state.active && registry.categories[vnode.state.active].component)?
-                m(registry.categories[vnode.state.active].component,
-                  {key: vnode.attrs.active, doc: vnode.attrs.doc, patch: vnode.attrs.patch, path: vnode.attrs.path})
-                :null
-        ];
+        function patch(category) {
+            return function(ops, headers) {
+                ops.forEach(
+                    function (op) {
+                        op.path = `/${category}${op.path}`
+                    }
+                );
+
+                if (!vnode.attrs.file[category]) {
+                    ops.unshift({op: "add", path: `/${category}`, value: {}});
+                }
+
+                return vnode.attrs.patch(ops, headers);
+            }
+        }
+
+        return m("details", {open: true},
+                 m("summary", {style: "float: left;"}, "CATEGORY"),
+                 m(CUI.PopoverMenu,
+                   {closeOnContentClick: true,
+                    trigger:
+                    m(CUI.Icon, {name: CUI.Icons.PLUS, style: "float: right;"}),
+                    content: new_categories.map(
+                        ([key, value]) =>
+                        m(CUI.MenuItem,
+                          {label: value.name,
+                           onclick: new_category(key)})
+                    )
+                   }),
+                 m(".container", {style: "clear: both; padding: 0 0 0 1em;"},
+                   Object.entries(registry.categories).filter(
+                       ([key, value]) => (vnode.attrs.file.category_s || []).includes(key)).map(
+                           ([key, value]) =>
+                           m("details", {open: true},
+                             m("summary", {style: "float: left;"}, value.name),
+                             m("", {style: "float: right;"}, m(CUI.Icon, {name: CUI.Icons.X, onclick: delete_category(key)})),
+                             m("", {style: "clear: both; padding: 0 0 0 1em;"},
+                               m(value.component,
+                                 {id: vnode.attrs.id,
+                                  file: vnode.attrs.file,
+                                  patch: patch(key)}
+                                )
+                              )
+                            )
+                       )
+                  )
+                );
     }
 };
 
-
 export const registry = {categories: {}};
-export const left_widgets = [CategoryTabs];
+export const widgets = [Widget];

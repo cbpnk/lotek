@@ -1,37 +1,84 @@
 import os
-from warnings import catch_warnings
-from html import escape
+from importlib import import_module
 
 from wheezy.http import WSGIApplication
-from wheezy.web.middleware import bootstrap_defaults
-from wheezy.web.middleware import path_routing_middleware_factory
-from wheezy.template.engine import Engine
-from wheezy.template.ext.core import CoreExtension
-from wheezy.template.ext.code import CodeExtension
-from wheezy.template.loader import FileLoader, autoreload
-from wheezy.web.templates import WheezyTemplate
+from wheezy.web.middleware import bootstrap_defaults, path_routing_middleware_factory
+from wheezy.security.crypto import Ticket
+from wheezy.routing import url
 
-from .urls import all_urls
+from .templates import Template
+from .config import load_config
+from .wopi import refresh_clients
 
-engine = Engine(
-    loader=FileLoader([os.path.join(os.path.dirname(__file__), 'templates')]),
-    extensions=[CoreExtension(), CodeExtension()])
+from .static import all_urls as static_urls
+from .auth import all_urls as auth_urls
+from .hypothesis import all_urls as hypothesis_urls
+from .wsb import all_urls as wsb_urls
+from .views import all_urls as lotek_urls
+from .clients.wopi import discovery
 
-with catch_warnings(record=True):
-    engine = autoreload(engine)
 
-engine.global_vars.update({'e': escape})
+config = load_config(os.environ.get(__package__.replace(".", "_").upper() + '_CONFIG', None))
+
+enabled_clients = {
+    name
+    for actions in config.CLIENT_FORMATS.values()
+    for name in actions.values()
+}
+
+mods = {
+    name: import_module(f"{__package__}.clients.{name}")
+    for name in enabled_clients
+}
+
+client_urls = [
+    ("", discovery)
+] + [
+    url(f"{name}.html", mod.Handler, name=name)
+    for name, mod in mods.items()
+] + [
+    (f"{name}/", mod.all_urls)
+    for name, mod in mods.items()
+    if hasattr(mod, 'all_urls')
+]
+
+all_urls = [
+    ("static/", static_urls),
+    ("auth/", auth_urls),
+    ("hypothesis/", hypothesis_urls),
+    ("wsb/", wsb_urls),
+    ("clients/", client_urls),
+    ("", lotek_urls),
+]
 
 application = WSGIApplication(
     [bootstrap_defaults(url_mapping=all_urls),
      path_routing_middleware_factory],
     {'MAX_CONTENT_LENGTH': 1024**3,
-     'render_template': WheezyTemplate(engine)})
+     'render_template': Template(os.path.join(os.path.dirname(__file__), 'templates')),
+     'ticket': Ticket(max_age=36000),
+     'STATIC_ROOTS': [config.STATIC_ROOT, os.path.join(os.path.dirname(__file__), 'static')],
+     'STATIC_VENDOR_ROOT': config.STATIC_VENDOR_ROOT,
+     'PLUGINS': config.PLUGINS,
+     'AUTH_DOMAIN': config.AUTH_DOMAIN,
+     'BASE_URL': config.BASE_URL,
+     'HOST_FORMATS': config.HOST_FORMATS,
+     'repo': config.repo,
+     'users': config.users,
+     'formats': config.formats,
+     'index': config.index,
+     'proof_key': config.proof_key,
+     'CLIENT_FORMATS': config.CLIENT_FORMATS})
 
-def run_server():
-    from wsgiref.simple_server import make_server
-    try:
-        print("Visit http://127.0.0.1:8080/")
-        make_server("", 8080, application).serve_forever()
-    except KeyboardInterrupt:
-        pass
+import uwsgi
+
+def refresh_timer(num):
+    refresh_clients(config.WOPI_CLIENTS, application, config.BASE_URL)
+
+def update_index(num):
+    config.index.update()
+
+uwsgi.register_signal(1, 'workers', refresh_timer)
+uwsgi.add_rb_timer(1, 0, 1)
+uwsgi.add_rb_timer(1, 3600)
+uwsgi.register_signal(2, 'mule', update_index)

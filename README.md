@@ -1,32 +1,23 @@
-个人信息管理工具，使用熵增主义技术栈开发。
+熵增主义个人信息管理工具。文件存在git仓库里，文件内容通过支持WOPI协议
+的编辑器来编辑，文件除了内容本身以外，还可以有若干类似trilium的属性，
+属性可以通过JSON Patch(RFC 6902)来编辑。集成Hypothesis和WebScrapBook的
+Server。
 
-* mithril.js
-* construct-ui
-* htm
-* wheezy.web
-* dulwich
-* whoosh
-* pdfminer.six
-* hypothesis
-
-核心概念都是从trilium那里抄来的。文件存在git仓库里，文件内容包含元信息
-以及Markdown格式的正文，通过JSON Patch(RFC 6902)编辑元信息，Markdown内
-容通过外接编辑器编辑，页面上的功能都由插件查询全文索引来实现。集成
-Hypothesis每个Markdown文件以及导入的PDF文件都可以加批注。
-
-## 元信息类型
+## 属性类型
 
 | 后缀 | 类型 |
 | - | - |
-| \_i | ID |
+| \_r | 文件ID |
+| \_s | 字符串 |
 | \_t | 文本 |
-| \_n | 数值 |
+| \_i | 整数 |
+| \_f | 浮点数 |
 | \_d | 日期 |
 
 ### Category
 
-`category_i` 用来记录Markdown文件的Category。一个Markdown文件可以有多
-个Category。某个具体的Category的显示由对应的插件提供。
+`category_s` 用来记录文件的Category。一个文件可以有多个Category。由
+Category对应的插件来显示。
 
 ## Quickstart
 

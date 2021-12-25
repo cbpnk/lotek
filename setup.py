@@ -18,31 +18,25 @@ setup(
 
     packages = find_packages(),
     package_data = {
-      'lotek': ['templates/*.html', 'static/*.html', 'static/*.js', 'static/*.css']
+      'lotek.host': ['templates/*.html', 'static/*.html', 'static/*.js', 'static/*.css'],
+      'lotek.client': ['templates/*.html', 'static/*.html', 'static/*.js', 'static/*.css']
     },
     entry_points={
-        'lotek_editors':
-        [ 'textarea = lotek.textarea:TextArea',
-          'feishu = lotek.feishu:FeishuTenant'
-        ],
-        'lotek_txt_formats':
-        [ 'markdown = lotek.markdown:MarkdownParser',
-        ],
-        'lotek_media_formats':
-        [ 'pdf = lotek.pdf',
-          'maff = lotek.maff',
+        'lotek_repos':
+        [ 'git = lotek.repos.git:GitRepo',
         ],
     },
     install_requires = [
         'dulwich',
         'jsonpatch',
-        'markdown',
-        'pdfminer.six',
-        'wheezy.http',
-        'wheezy.routing',
+        'ruamel.yaml',
+        'wheezy.web',
         'wheezy.template',
-        'whoosh',
-        'pymdown-extensions',
-        'Pygments'
+        'whoosh'
     ],
+    extras_requires = {
+      'odf': ['odfdo'],
+      'pdf': ['pdfminer.six'],
+      'markdown': ['markdown', 'pymdown-extensions', 'Pygments']
+    }
 )

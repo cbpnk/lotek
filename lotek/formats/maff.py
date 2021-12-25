@@ -2,7 +2,7 @@ from zipfile import ZipFile
 import xml.etree.ElementTree as ET
 from email.utils import parsedate_to_datetime
 
-EXT = ".maff"
+NAME = 'Mozilla Archive Format'
 
 NAMESPACES = {
     "MAF": "http://maf.mozdev.org/metadata/rdf#",
@@ -16,6 +16,9 @@ def get_topdir(maff):
     name = list(topdirs)[0]
     return name
 
+def get_indexfilename(maff, name):
+    root = ET.fromstring(maff.read(f"{name}/index.rdf"))
+    return root.find("./RDF:Description/MAF:indexfilename", NAMESPACES).attrib[RESOURCE]
 
 def extract_metadata(f):
     maff = ZipFile(f)
@@ -27,19 +30,10 @@ def extract_metadata(f):
     archivetime = parsedate_to_datetime(archivetime)
 
     return {
-        "category_i": ["maff"],
-        "maff__originalurl_i": [originalurl],
-        "title_t": [title],
-        "maff__archive_d": [archivetime.isoformat()]
+        "originalurl_s": originalurl,
+        "title_t": title,
+        "archive_d": archivetime.isoformat()
     }
 
-
-def index_file(path, add_document):
-    pass
-
-def render_context(filename, f):
-    maff = ZipFile(f)
-    name = get_topdir(maff)
-    root = ET.fromstring(maff.read(f"{name}/index.rdf"))
-    indexfilename = root.find("./RDF:Description/MAF:indexfilename", NAMESPACES).attrib[RESOURCE]
-    return {"indexfilename": f"/{filename}!/{name}/{indexfilename}"}
+def extract_content(f):
+    return []

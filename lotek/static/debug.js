@@ -8,7 +8,6 @@ const Debug = {
     view: function(vnode) {
         function oninput(event) {
             vnode.state.value = event.target.value;
-            console.log(vnode.state.value);
             vnode.state.disabled = true;
             try {
                 JSON.parse(vnode.state.value);
@@ -22,7 +21,7 @@ const Debug = {
         }
 
         let doc = {};
-        Object.assign(doc, vnode.attrs.doc);
+        Object.assign(doc, vnode.attrs.file);
         delete doc.content;
         delete doc.html;
 
@@ -58,32 +57,28 @@ var JSONView = {
 </body>
 </html>`;
 
-        return (!vnode.attrs.patch)?null:
-            [
-                m(CUI.Button,
-                  {label: "Debug",
-                   onclick: () => {vnode.state.active = true;}}),
-                m(CUI.Drawer,
-                  {isOpen: vnode.state.active,
-                   position: "left",
-                   onClose: () => {vnode.state.active = false},
-                   content: [
-                       m(CUI.TextArea,
-                         {oninput: oninput,
-                          value: vnode.state.value}),
-                       m(CUI.Button,
-                         {label: "PATCH",
-                          intent: "primary",
-                          disabled: vnode.state.disabled,
-                          onclick: onclick}),
-                       m("iframe",
-                         {style: "margin: 0; padding: 0; border: none; height: 100%;",
-                          srcdoc: srcdoc})
-                   ]
-                  }
-                 )
-            ];
+        return m("div.column-flex.container",
+                 m(CUI.TextArea,
+                   {oninput: oninput,
+                    value: vnode.state.value}),
+                 m(CUI.Button,
+                   {label: "PATCH",
+                    intent: "primary",
+                    disabled: vnode.state.disabled,
+                    onclick: onclick}),
+                 m("iframe.container",
+                   {style: "border: none;",
+                    srcdoc: srcdoc})
+                );
     }
 }
 
-export const left_widgets = [Debug];
+function is_debug_available(file, allow) {
+    return true;
+}
+
+export const modes = [
+    {label: "Debug",
+     is_available: is_debug_available,
+     component: Debug}
+];

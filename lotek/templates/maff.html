@@ -1,9 +1,10 @@
-@require(title, indexfilename)
+@require(TITLE, WOPISrc, indexfilename, access_token, hypothesis_url)
 <!doctype html>
 <html>
 <head>
 <base target="_parent">
-<title>@title!e</title>
+<title>@TITLE!e</title>
+<link href="@WOPISrc!a" rel="canonical" />
 <style type="text/css">
 html, body, iframe {
   margin: 0;
@@ -18,8 +19,8 @@ iframe {
 }
 </style>
 <script type="application/json" class="js-hypothesis-config">
-{"assetRoot": "/static/vendor/npm/hypothesis@@1.810.0/",
- "sidebarAppUrl": "/static/app.html"
+{"assetRoot": "@{hypothesis_url}static/vendor/npm/hypothesis@@1.810.0/",
+ "sidebarAppUrl": "@{hypothesis_url}static/app.html"
 }
 </script>
 
@@ -27,17 +28,18 @@ iframe {
 var hypothesisConfig = function() {
     return {
         services: [{
-            apiUrl: `${window.parent.location.protocol}//${window.parent.location.host}/hypothesis/api/`,
-            grantToken: localStorage.getItem('token'),
+            apiUrl: "@{hypothesis_url}hypothesis/api/",
+            grantToken: @access_token!json!e,
             sentry: {"enabled": false},
-            assetRoot: "/static/vendor/npm/hypothesis@@1.810.0/",
+            assetRoot: "@{hypothesis_url}static/vendor/npm/hypothesis@@1.810.0/",
         }]
     };
 };
 
 </script>
+<script src="@{hypothesis_url}static/vendor/npm/hypothesis@@1.810.0/build/boot.js"></script>
 </head>
 <body>
-<iframe src="@indexfilename" enable-annotation></iframe>
+<iframe src="@indexfilename!a"></iframe>
 </body>
 </html>

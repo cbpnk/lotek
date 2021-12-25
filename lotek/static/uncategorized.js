@@ -1,1 +1,1 @@
-export const searches = [{name: "Uncategorized", query: "NOT category_i:*"}];
+export const searches = [{name: "Uncategorized", query: "NOT category_s:*"}];

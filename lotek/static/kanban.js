@@ -1,11 +1,12 @@
 import {AutoCompleteInput} from "/static/autocomplete.js";
-import {Link, Title} from "/static/view.js";
-import {Reload} from "/static/reload.js";
 
+function get_datestring(date) {
+    return (date || new Date()).toISOString().slice(0, -1);
+}
 
 function is_blocked(card, cards) {
-    for (let path of (card.card__blocker_i || [])) {
-        if (path in cards) {
+    for (let id of (card.card.blocker_r || [])) {
+        if (id in cards) {
             return true;
         }
     }
@@ -13,33 +14,433 @@ function is_blocked(card, cards) {
     return false;
 }
 
-class Milestone extends Reload {
-    oninit(vnode) {
-        super.oninit(vnode);
-        document.title = vnode.attrs.path;
+const CardForm = {
+    view(vnode) {
+        const span = {
+            xs: 12,
+            sm: 12,
+            md: 6
+        };
+
+        const schedule_d = vnode.attrs.file.card?.schedule_d;
+        const start_d = vnode.attrs.file.card?.start_d;
+        const end_d = vnode.attrs.file.card?.end_d;
+
+        function schedule() {
+            const date = get_datestring();
+            vnode.attrs.patch(
+                [{op: "add", path: "/schedule_d", value: date}],
+                {'Subject': `set schedule date ${date}Z`}
+            );
+        }
+
+        function start() {
+            const date = get_datestring();
+            vnode.attrs.patch(
+                [{op: "add", path: "/start_d", value: date}],
+                {'Subject': `set start date ${date}Z`}
+            );
+        }
+
+        function end() {
+            const date = get_datestring();
+            vnode.attrs.patch(
+                [{op: "add", path: "/end_d", value: date}],
+                {'Subject': `set end date ${date}Z`}
+            );
+        }
+
+        return [
+            m(CUI.FormGroup, { span },
+              m(CUI.FormLabel,
+                "Schedule Date"),
+              (end_d || start_d)?"N/A":
+              schedule_d?new Date(schedule_d + "Z").toISOString():
+              m(CUI.Button,
+                {label: "Schedule",
+                 onclick: schedule
+                })
+             ),
+            m(CUI.FormGroup, { span },
+              m(CUI.FormLabel,
+                "Start Date"),
+              (end_d)?"N/A":
+              start_d?new Date(start_d + "Z").toISOString():
+              m(CUI.Button,
+                {label: "Start",
+                 onclick: start
+                })
+             ),
+            m(CUI.FormGroup, { span },
+              m(CUI.FormLabel,
+                "End Date"),
+              end_d?new Date(end_d + "Z").toISOString():
+              m(CUI.Button,
+                {label: "End",
+                 onclick: end
+                })
+             ),
+            m(CUI.FormGroup, { span },
+              m(CUI.FormLabel,
+                "Milestone"),
+              m(AutoCompleteInput,
+                {ids: vnode.attrs.file.card?.milestone_r,
+                 query: "category_s:milestone AND NOT milestone.end_d:>=1900-01-01",
+                 attribute: "milestone_r",
+                 patch: vnode.attrs.patch,
+                 placeholder: "Add milestone ...",
+                }
+               )
+             ),
+            m(CUI.FormGroup, { span },
+              m(CUI.FormLabel,
+                "Blocker"),
+              m(AutoCompleteInput,
+                {ids: vnode.attrs.file.card?.blocker_r,
+                 query: `category_s:card AND NOT card.end_d:>=1900-01-01 AND NOT id:${vnode.attrs.id}`,
+                 attribute: "blocker_r",
+                 patch: vnode.attrs.patch,
+                 placeholder: "Add blocker ...",
+                }
+               )
+             )
+        ];
     }
+};
 
-    load(vnode) {
-        return {
-            async milestone() {
-                let result = await m.request(
-                    {method: "GET",
-                     url: "/:path",
-                     params: {path: vnode.attrs.path},
-                     responseType: "json"}
+const MilestoneForm = {
+    view(vnode) {
+        const span = {
+            xs: 12,
+            sm: 12,
+            md: 6
+        };
+
+        const schedule_d = vnode.attrs.file.milestone?.schedule_d;
+        const start_d = vnode.attrs.file.milestone?.start_d;
+        const end_d = vnode.attrs.file.milestone?.end_d;
+
+        function schedule() {
+            const date = get_datestring();
+            vnode.attrs.patch(
+                [{op: "add", path: "/schedule_d", value: date}],
+                {'Subject': `set schedule date ${date}Z`}
+            );
+        }
+
+        function start() {
+            const date = get_datestring();
+            vnode.attrs.patch(
+                [{op: "add", path: "/start_d", value: date}],
+                {'Subject': `set start date ${date}Z`}
+            );
+        }
+
+        function end() {
+            const date = get_datestring();
+            vnode.attrs.patch(
+                [{op: "add", path: "/end_d", value: date}],
+                {'Subject': `set end date ${date}Z`}
+            );
+        }
+
+        return [
+            m(CUI.FormGroup, { span },
+              m(CUI.FormLabel,
+                "Schedule Date"),
+              (end_d || start_d)?"N/A":
+              schedule_d?new Date(schedule_d + "Z").toISOString():
+              m(CUI.Button,
+                {label: "Schedule",
+                 onclick: schedule
+                })
+             ),
+            m(CUI.FormGroup, { span },
+              m(CUI.FormLabel,
+                "Start Date"),
+              (end_d)?"N/A":
+              start_d?new Date(start_d + "Z").toISOString():
+              m(CUI.Button,
+                {label: "Start",
+                 onclick: start
+                })
+             ),
+            m(CUI.FormGroup, { span },
+              m(CUI.FormLabel,
+                "End Date"),
+              end_d?new Date(end_d + "Z").toISOString():
+              m(CUI.Button,
+                {label: "End",
+                 onclick: end
+                })
+             ),
+            m(CUI.FormGroup, { span },
+              m(CUI.FormLabel,
+                "Project"),
+              m(AutoCompleteInput,
+                {ids: vnode.attrs.file.card?.project_r,
+                 query: "category_s:project AND NOT project.end_d:>=1900-01-01",
+                 attribute: "project_r",
+                 patch: vnode.attrs.patch,
+                 placeholder: "Add project ...",
+                }
+               )
+             )
+        ];
+    }
+};
+
+const ProjectForm = {
+    view(vnode) {
+
+    }
+};
+
+const Calendar = {
+    oninit(vnode) {
+        document.title = 'Calendar';
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const start = new Date(today.valueOf() - 86400000 * today.getDay());
+        const end = new Date(start.valueOf() + 86400000 * 7);
+        vnode.state.start = start;
+        vnode.state.end = end;
+        vnode.state.cards = [];
+
+        request(
+            {method: "POST",
+             url: "/search/",
+             body: {q: `category_s:card AND card.start_d:[TO ${get_datestring(end)}] AND (card.end_d:[${get_datestring(start)} TO] OR NOT card.end_d:[1900-01-01 TO])`}
+            }
+        ).then(
+            function(result) {
+                vnode.state.cards = result;
+            }
+        );
+    },
+
+    view(vnode) {
+        const start = vnode.state.start;
+        const end = vnode.state.end;
+        const rows = vnode.state.cards.length;
+
+        return m("div.container",
+                 {style: "overflow-y: auto;"},
+                 m('div',
+                   {style: "width: 100%; display: grid; grid-template-columns: repeat(7, 1fr);"},
+
+                   ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
+                        (day, i) =>
+                       m("div",
+                         {style: `text-align: center; grid-area: 1/${i+1}/2/${i+2}; z-index:1;`},
+                         day)
+                   ),
+
+
+                   Array.from({length: 7}).map(
+                       function(_, i) {
+                           const date = new Date(start.valueOf() + 86400000 * i);
+                           return m("div",
+                                    {style: `grid-area: 2/${i+1}/3/${i+2}; padding: 0.25em 0.5em; text-align: right; z-index:1;`},
+                                    date.getDate()
+                                   );
+                       }
+                   ),
+
+                   vnode.state.cards.map(
+                       function(card, i) {
+                           const row = i + 3;
+                           const start_d = new Date(card.card.start_d + "Z");
+                           const start_date = new Date(start_d.getFullYear(), start_d.getMonth(), start_d.getDate());
+
+                           const end_d = (card.card.end_d)?new Date(card.card.end_d + "Z"):null;
+                           const end_date = (end_d)?new Date(end_d.getFullYear(), end_d.getMonth(), end_d.getDate()):null;
+                           const start_column = 1 + ((start_date <= start)?0:((start_date.valueOf() - start.valueOf()) / 86400000));
+                           const end_column = 2 + ((end_date && end_date < end)?((end_date.valueOf() - start.valueOf())/86400000):6);
+
+                           const background = (end_d)?"#4caf50":"#5c6bc0";
+                           const margin_left = (start_date < start)?"0":"1em";
+                           const margin_right = (end_date && end_date < end)?"1em":"0";
+                           const radius_left = (start_date < start)?"0":"0.5em";
+                           const radius_right = (end_date && end_date < end)?"0.5em":"0";
+
+                           return m("div",
+                                    {style: `
+grid-area: ${row}/${start_column}/${row+1}/${end_column};
+background: ${background};
+border-radius: ${radius_left} ${radius_right} ${radius_right} ${radius_left};
+margin: 0.5em ${margin_right} 0.5em ${margin_left};
+z-index: 2;
+color: white;
+padding: 0.5em 1em;`},
+                                    m(m.route.Link,
+                                      {style: "text-decoration: none; color: white;",
+                                       href: m.buildPathname("/:id", {id: card.id})},
+                                      card.name || card.id)
+                                   );
+                       }
+                   ),
+
+
+                   Array.from({length: 7}).map(
+                       function(_, i) {
+                           const background = (i%2==0)?"#ffffff":"#eeeeee";
+                           return m("div",
+                                    {style: `grid-area: 1/${i+1}/${rows+3}/${i+2}; background: ${background};`},
+                                   );
+                       }
+                   )
+                  )
                 );
-                document.title = (result.title_t || [vnode.attrs.path])[0];
-                return result;
-            },
+    }
+};
 
-            async cards() {
-                let result = await m.request(
-                    {method: "POST",
-                     url: "/search/",
-                     body: {q: `category_i:card AND card__milestone_i:${vnode.attrs.path}`}}
+const Panel = {
+    view(vnode) {
+        const name = vnode.attrs.name;
+        const cards = vnode.attrs.cards;
+        const style = vnode.attrs.style || "";
+        return m("div",
+                 {style: `${style}padding: 0.5em; background: #eee; border-radius: 0.25em;`},
+                 m("div", name),
+                 cards.map(
+                     (card) =>
+                     m("div",
+                       {style: "background: #fff; margin: 0.5em; padding: 0.5em 1em; border-left: 0.25em solid #888;"},
+                       m(m.route.Link,
+                         {style: "text-decoration: none;",
+                          href: m.buildPathname("/:id", {id: card.id})},
+                         card.name || card.id)
+                      )
+                 )
                 );
+    }
+};
 
-                let cards = {
+const Kanban = {
+    oninit(vnode) {
+        document.title = 'Kanban';
+        request(
+            {method: "POST",
+             url: "/search/",
+             body: {q: `category_s:card AND NOT card.end_d:>=1900-01-01`}}
+        ).then(
+            function(results) {
+                const cards = {
+                    by_id: Object.fromEntries(
+                        results.map((card) => [card.id, card])
+                    ),
+                    in_milestones: {},
+                    in_backlog: [],
+                    in_inbox: [],
+                    in_wip: [],
+                    in_blocked: []
+                };
+
+                for (const card of results) {
+                    if (card.card?.start_d) {
+                        if (is_blocked(card, cards)) {
+                            cards.in_blocked.push(card);
+                        } else {
+                            cards.in_wip.push(card);
+                        }
+                    } else if (card.card?.schedule_d) {
+                        cards.in_inbox.push(card);
+                    } else if (card.card?.milestone_r) {
+                        for (const milestone_r of (card.card?.milestone_r || [])) {
+                            cards.in_milestones[milestone_r] = cards.in_milestones[milestone_r] || [];
+                            cards.in_milestones[milestone_r].push(card);
+                        }
+                    } else {
+                        cards.in_backlog.push(card);
+                    }
+                }
+
+                vnode.state.cards = cards;
+            }
+        );
+
+        request(
+            {method: "POST",
+             url: "/search/",
+             body: {q: "category_s:operator"}}
+        ).then(
+            function(results) {
+                vnode.state.operators = Object.fromEntries(results.map((operator) => [operator.id, operator]));
+            }
+        );
+
+        request(
+            {method: "POST",
+             url: "/search/",
+             body: {q: "category_s:milestone AND milestone.start_d:>=1900-01-01 AND NOT milestone.end_d:>=1900-01-01"}
+            }
+        ).then(
+            function(results) {
+                vnode.state.milestones = {
+                    list: results,
+                    by_id: Object.fromEntries(results.map((milestone) => [milestone.id, milestone]))
+                };
+            }
+        );
+    },
+
+    view(vnode) {
+        const milestones = vnode.state.milestones;
+        const operators = vnode.state.operators;
+        const cards = vnode.state.cards;
+        if (!cards || !milestones || !operators) {
+            return m(CUI.Spinner,
+                     {fill: true,
+                      size: "xl"});
+        }
+
+        return m("div.container.row-flex",
+                 m("div.container", {style: "position:relative;"},
+                   m("div.container", {style: "position: absolute; overflow-y: auto; padding: 0 0.5em;"},
+                     milestones.list.map(
+                         (milestone) =>
+                         m(Panel,
+                           {name: milestone.name,
+                            cards: (cards.in_milestones || {})[milestone.id] || [],
+                            style: "margin: 0.5em 0;"
+                           }))
+                    )
+                  ),
+
+                 [{name: "BACKLOG", cards: cards.in_backlog},
+                  {name: "INBOX", cards: cards.in_inbox},
+                  {name: "BLOCKED", cards: cards.in_blocked},
+                  {name: "WIP", cards: cards.in_wip}
+                 ].map(
+                     (panel) =>
+                     m("div.container", {style: "position:relative;"},
+                       m("div.container", {style: "position: absolute; overflow-y: auto; padding: 0.5em;"},
+                         m(Panel,
+                           {style: "min-height: 100%;",
+                            name: panel.name,
+                            cards: panel.cards})
+                        )
+                      )
+                 )
+                );
+    }
+};
+
+
+function is_milestone_available(file, allow) {
+    return (file.category_s || []).includes("milestone");
+}
+
+const Milestone = {
+    oninit(vnode) {
+        request(
+            {method: "POST",
+             url: "/search/",
+             body: {q: `category_s:card AND card.milestone_r:${vnode.attrs.id}`}}
+        ).then(
+            function(result) {
+                const cards = {
                     in_backlog: [],
                     in_inbox: [],
                     in_wip: [],
@@ -58,475 +459,64 @@ class Milestone extends Reload {
                     }
                 }
 
-                return cards
+                vnode.state.cards = cards;
             }
-        };
-    }
+        );
+    },
 
-    render({cards}, vnode) {
-        return [
-            m("aside.left",
-              m(m.route.Link,
-                {href: m.buildPathname("/:path", {path: vnode.attrs.path})},
-                "Go back")
-             ),
-            m("div.columns", {"style": "grid-column: 2 / span 2; margin: 1em;"},
-              [{name: "BACKLOG", cards: cards.in_backlog},
-               {name: "INBOX", cards: cards.in_inbox},
-               {name: "WIP", cards: cards.in_wip},
-               {name: "DONE", cards: cards.in_done}
-              ].map(
-                  (panel) =>
-                  m("div.panel.column.mx-2",
-                    m("div.panel-header",
-                      m("div.panel-title", panel.name)
-                     ),
-                    m("div.panel-body",
-                      (!panel.cards)?m("div.loading.loading-lg"):
-                      panel.cards.map(
-                          (card) =>
-                          m("div.card.my-2",
-                            m("div.card-header",
-                              m(Link, {doc: card})
-                             ),
-                            m("div.card-body")
-                           )
-                      )
-                     )
-                   )
-              )
-             )
-        ];
-    }
-};
+    view(vnode) {
+        const cards = vnode.state.cards;
+        if (!cards) {
+            return m(CUI.Spinner,
+                     {fill: true,
+                      size: "xl"});
+        }
 
-class Kanban extends Reload {
-    oninit(vnode) {
-        super.oninit(vnode);
-        document.title = 'Kanban';
-    }
-
-    load(vnode) {
-        return {
-            async milestones() {
-                let result = await m.request(
-                    {method: "POST",
-                     url: "/search/",
-                     body: {q: "category_i:milestone AND milestone__start_d:>=1900-01-01 AND NOT milestone__end_d:>=1900-01-01"}
-                    }
-                );
-
-                return {
-                    list: result,
-                    by_path: Object.fromEntries(result.map((milestone) => [milestone.path, milestone])),
-                }
-            },
-
-            async operators() {
-                let result = await m.request(
-                    {method: "POST",
-                     url: "/search/",
-                     body: {q: "category_i:operator"}
-                    }
-                );
-                return Object.fromEntries(result.map((operator) => [operator.path, operator]));
-            },
-
-            async cards() {
-                let result = await m.request(
-                    {method: "POST",
-                     url: "/search/",
-                     body: {q: "category_i:card AND NOT card__end_d:>=1900-01-01"}}
-                );
-
-
-                let cards = {
-                    by_path: Object.fromEntries(
-                        result.map((card) => [card.path, card])
-                    ),
-                    in_milestones: {},
-                    in_backlog: [],
-                    in_inbox: [],
-                    in_wip: [],
-                    in_blocked: []
-                };
-
-                for (let card of result) {
-                    if (card.card__start_d) {
-                        if (is_blocked(card, cards)) {
-                            cards.in_blocked.push(card);
-                        } else {
-                            cards.in_wip.push(card);
-                        }
-                    } else if (card.card__schedule_d) {
-                        cards.in_inbox.push(card);
-                    } else if (card.card__milestone_i) {
-                        for (let milestone_i of card.card__milestone_i) {
-                            cards.in_milestones[milestone_i] = cards.in_milestones[milestone_i] || [];
-                            cards.in_milestones[milestone_i].push(card);
-                        }
-                    } else {
-                        cards.in_backlog.push(card);
-                    }
-                }
-
-                return cards;
-            }
-        };
-    }
-
-    render({milestones, operators, cards}) {
-        return [
-            m("div.columns", {"style": "grid-column: 1 / span 3; margin: 1em;"},
-              m("div.panel.column.mx-2",
-                m("div.panel-header",
-                  m("div.panel-title", "Milestones")
-                 ),
-                m("div.panel-body",
-                  milestones.list.map(
-                      (milestone) =>
-                      m("div.card.my-2",
-                        m("div.card-header",
-                          m(m.route.Link,
-                            {href: m.buildPathname("/kanban/:path", {path: milestone.path}),
-                             "class": "badge",
-                             "data-badge": ((cards.in_milestones || {})[milestone.path] || []).length },
-                              m(Title, {doc: milestone}))
-                         ),
-                        m("div.card-body",
-                         )
-                       )
-                  )
-                 )
-               ),
-
-              [
-                  {name: "BACKLOG", cards: cards.in_backlog},
+        return m("div.container.row-flex",
+                 [{name: "BACKLOG", cards: cards.in_backlog},
                   {name: "INBOX", cards: cards.in_inbox},
-                  {name: "BLOCKED", cards: cards.in_blocked},
                   {name: "WIP", cards: cards.in_wip},
-              ].map(
-                  (panel) =>
-                  m("div.panel.column.mx-2",
-                    m("div.panel-header",
-                      m("div.panel-title", panel.name)
-                     ),
-                    m("div.panel-body",
-                      panel.cards.map(
-                          (card) =>
-                          m("div.card.my-2",
-                            m("div.card-header",
-                              m("div.card-title",
-                                m(m.route.Link,
-                                  {href: m.buildPathname("/:path...", {path: card.path}),
-                                   "class": "badge",
-                                   "data-badge": (card.card__blocker_i || []).filter((path) => path in cards.by_path).length || undefined
-                                  },
-                                  m(Title, {doc: card})))
-                               ),
-                              m("div.card-subtitle",
-                                (card.card__milestone_i || [])
-                                .filter((path) => path in milestones.by_path)
-                                .map((path) => m("span.chip", m(Title, {doc: milestones.by_path[path]})))
-                               ),
-                            m("div.card-body",
-                              (card.card__assignee_i || [])
-                              .map((path) => m("span.chip", m(Title, {doc: operators[path]})))
-                             )
-                           )
+                  {name: "DONE", cards: cards.in_done}
+                 ].map(
+                     (panel) =>
+                     m("div.container", {style: "position:relative;"},
+                       m("div.container", {style: "position: absolute; overflow-y: auto; padding: 0.5em;"},
+                         m(Panel,
+                           {style: "min-height: 100%;",
+                            name: panel.name,
+                            cards: panel.cards})
+                        )
                       )
-                     )
-                   )
-              )
-             )
-        ];
+                 )
+                );
 
     }
 };
 
-function get_datestring() {
-    return new Date().toISOString().slice(0, -1);
-}
+export const modes = [
+    {label: "Milestone",
+     is_available: is_milestone_available,
+     component: Milestone}
+];
 
-const MilestoneForm = {
-    view: function(vnode) {
-        let doc = vnode.attrs.doc;
-        let started = ((doc.milestone__start_d || []).length > 0);
-        let ended = ((doc.milestone__end_d || []).length > 0);
-
-        function start() {
-            vnode.attrs.patch(
-                [{op: "add", path: "/milestone__start_d", value: [get_datestring()]}]
-            );
-        }
-
-        function end() {
-            const datestring = get_datestring();
-            let patch = [{op: "add", path: "/milestone__end_d", value: [datestring]}];
-            if (!started) {
-                patch.push({op: "add", path: "/milestone__start_d", value: [datestring]});
-            }
-            vnode.attrs.patch(patch);
-        }
-
-        return [
-            m("dl.text-small",
-              m("dt", "Start Date"),
-              m("dd",
-                started?doc.milestone__start_d[0]:vnode.attrs.patch?m("button.btn.btn-sm.btn-primary", {onclick: start}, "Start"):"N/A"),
-              m("dt", "End Date"),
-              m("dd",
-                ended?doc.milestone__end_d[0]:vnode.attrs.patch?m("button.btn.btn-sm.btn-primary", {onclick: end}, "End"):"N/A"),
-              m("dt", "Project"),
-              m("dd",
-                m(AutoCompleteInput,
-                  {paths: vnode.attrs.doc.milestone__project_i,
-                   query: "category_i:project",
-                   attribute: "milestone__project_i",
-                   patch: vnode.attrs.patch,
-                   popover: "popover-right",
-                  }
-                 )
-               ),
-              m("div.form-group",
-                m(m.route.Link,
-                  {href: m.buildPathname("/kanban/:path", {path: vnode.attrs.path})},
-                  "Kanban View")
-               )
-             )
-        ];
-    }
-};
-
-class ProjectForm extends Reload {
-    load(vnode) {
-        return () => m.request(
-            {method: "POST",
-             url: "/search/",
-             body: {q: `category_i:milestone milestone__project_i:${vnode.attrs.path}`}}
-        );
-    }
-
-    render(milestones) {
-        return m(
-            "dl.text-small",
-            m("dt", "Milestones"),
-            (milestones || []).map(
-                (milestone) =>
-                m("dd.ml-2", m(Link, {doc: milestone}))
-            )
-        );
-    }
-};
-
-const CardForm = {
-    view: function(vnode) {
-        let doc = vnode.attrs.doc;
-
-        let scheduled = ((doc.card__schedule_d || []).length > 0);
-        let started = ((doc.card__start_d || []).length > 0);
-        let ended = ((doc.card__end_d || []).length > 0);
-
-        function schedule() {
-            vnode.attrs.patch(
-                [{op: "add", path: "/card__schedule_d", value: [get_datestring()]}]
-            );
-        }
-
-        function start() {
-            const datestring = get_datestring();
-            let patch = [{op: "add", path: "/card__start_d", value: [datestring]}];
-            if (!scheduled) {
-                patch.push({op: "add", path: "/card__schedule_d", value: [datestring]});
-            }
-            vnode.attrs.patch(patch);
-        }
-
-        function end() {
-            const datestring = get_datestring();
-            let patch = [{op: "add", path: "/card__end_d", value: [datestring]}];
-            if (!started) {
-                patch.push({op: "add", path: "/card__start_d", value: [datestring]});
-            }
-            if (!scheduled) {
-                patch.push({op: "add", path: "/card__schedule_d", value: [datestring]});
-            }
-            vnode.attrs.patch(patch);
-        }
-
-        return [
-            m("dl.text-small",
-              m("dt", "Schedule Date"),
-              m("dd.ml-2",
-                scheduled?doc.card__schedule_d[0]:vnode.attrs.patch?m("button.btn.btn-sm.btn-primary", {onclick: schedule}, "Schedule"):"N/A"),
-              m("dt", "Start Date"),
-              m("dd.ml-2",
-                started?doc.card__start_d[0]:vnode.attrs.patch?m("button.btn.btn-sm.btn-primary", {onclick: start}, "Start"):"N/A"),
-              m("dt", "End Date"),
-              m("dd.ml-2",
-                ended?doc.card__end_d[0]:vnode.attrs.patch?m("button.btn.btn-sm.btn-primary", {onclick: end}, "End"):"N/A"),
-              m("dt", "Milestone"),
-              m("dd",
-                m(AutoCompleteInput,
-                  {paths: vnode.attrs.doc.card__milestone_i,
-                   query: "category_i:milestone AND NOT milestone__end_d:>=1900-01-01",
-                   attribute: "card__milestone_i",
-                   patch: vnode.attrs.patch,
-                   popover: "popover-right",
-                  }
-                 )
-               ),
-              m("dt", "Assignee"),
-              m("dd",
-                m(AutoCompleteInput,
-                  {paths: vnode.attrs.doc.card__assignee_i,
-                   query: "category_i:operator",
-                   attribute: "card__assignee_i",
-                   patch: vnode.attrs.patch,
-                   popover: "popover-right",
-                  }
-                 )
-               ),
-              m("dt", "Blocker"),
-              m("dd",
-                m(AutoCompleteInput,
-                  {paths: vnode.attrs.doc.card__blocker_i,
-                   query: `category_i:card AND NOT card__end_d:>=1900-01-01 AND NOT path:${vnode.attrs.path}`,
-                   attribute: "card__blocker_i",
-                   patch: vnode.attrs.patch,
-                   popover: "popover-right",
-                  }
-                 )
-               )
-             )
-        ];
-    }
-}
-
-function format_date(date) {
-    return `${date.getFullYear()}-${date.getMonth()+1}-${date.getDate()}`;
-}
-
-function format_card(card, row, start, end, today) {
-    let start_d = card.card__start_d[0];
-    let end_d = card.card__end_d;
-    let start_date = new Date(start_d);
-    start_date = new Date(start_date.getFullYear(), start_date.getMonth(), start_date.getDate());
-    let end_date = null;
-    if (end_d !== undefined) {
-        end_d = end_d[0];
-        end_date = new Date(end_d);
-        end_date = new Date(end_date.getFullYear(), end_date.getMonth(), end_date.getDate());
-    }
-
-    let start_column = 1 + ((start_date <= start)?0:((start_date.valueOf() - start.valueOf()) / 86400000));
-    let end_column = 2 + ((end_date && end_date < end)?((end_date.valueOf() - start.valueOf())/86400000):6);
-
-    return [
-        [0,1,2,3,4,5,6].map(
-            function(_, i) {
-                let date = new Date(start.valueOf() + 86400000 * i);
-                let date_item = m("button.date-item", date.getDate());
-                let classes = "";
-
-                if (date < today) {
-                    if (date.getMonth() != today.getMonth()) {
-                        classes = classes + " prev-month";
-                    }
-                } else if (date < today) {
-                    if (date.getMonth() != today.getMonth()) {
-                        classes = classes + " next-month";
-                    }
-                }
-
-                if ((date >= start_date) && ((!end_date) || (date <= end_date))) {
-                    classes = classes + " calendar-range";
-                }
-
-                if (date.valueOf() == start_date.valueOf()) {
-                    classes = classes + " range-start";
-                } else if (date.valueOf() == end_date?.valueOf()) {
-                    classes = classes + " range-end";
-                }
-
-                return m("div",
-                         {"class": classes,
-                          "style": `grid-column-start: ${i+1}; grid-column-end: ${i+2}; z-index: 1; grid-row-start: ${row}; grid-row-end: ${row+1};`
-                         },
-                         m("div.calendar-date", {style: "max-width: none; border-bottom: .05rem solid #dadee4;"},
-                           m("button.date-item", date.getDate())));
-            }
-        ),
-        m("div.calendar-events",
-          {style: `grid-column-start: ${start_column}; grid-column-end: ${end_column}; z-index: 2; grid-row-start: ${row}; grid-row-end: ${row}; margin-top: 2em;`},
-          m(Link, {doc: card, "class": "calendar-event text-light p-2 " + ((end_date)?"bg-success":"bg-primary")}))
-    ];
-}
-
-class Calendar extends Reload {
-    oninit(vnode) {
-        let now = new Date();
-        let today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        vnode.state.today = today;
-        super.oninit(vnode);
-        document.title = 'Calendar';
-    }
-
-    load(vnode) {
-        let today = vnode.state.today;
-        let start = new Date(today.valueOf() - 86400000 * today.getDay());
-        let end = new Date(start.valueOf() + 86400000 * 7);
-        return () => m.request(
-            {method: "POST",
-             url: "/search/",
-             body: {q: `category_i:card AND card__start_d:[TO ${get_datestring(end)}] AND (card__end_d:[${get_datestring(start)} TO] OR NOT card__end_d:[1900-01-01 TO])`}}
-        );
-    }
-
-    render(cards, vnode) {
-        let today = vnode.state.today;
-        let start = new Date(today.valueOf() - 86400000 * today.getDay());
-        let end = new Date(start.valueOf() + 86400000 * 7);
-
-        return html`
-<div class="calendar calendar-lg" style="grid-column: 1 / span 3; margin: 1em;">
-  <div class="calendar-nav navbar">
-    <button class="btn btn-action btn-link btn-lg"><i class="icon icon-arrow-left" /></button>
-    <div class="navbar-primary">${today.getFullYear()}/${today.getMonth()+1}</div>
-    <button class="btn btn-action btn-link btn-lg"><i class="icon icon-arrow-right" /></button>
-  </div>
-  <div class="calendar-container">
-    <div class="calendar-header">
-      ${ ["Sun", "Mon", "Tue", "Wed", "Thur", "Fri", "Sat"].map(
-           (i) => html`<div class="calendar-date">${ i }</div>`
-         )
-       }
-    </div>
-    <div class="calendar-body" style="display: grid; grid-template-columns: repeat(7, 1fr);">
-      ${ cards.map((card, i) => format_card(card, i+1, start, end, today)) }
-    </div>
-  </div>
-</div>`;
-    }
-}
-
-
-export const routes = {
-    "/kanban/": (vnode) => m(Kanban),
-    "/kanban/:path": (vnode) => m(Milestone, {key: m.route.get(), path: vnode.attrs.path}),
-    "/calendar/": (vnode) => m(Calendar),
-};
+export const routes = [
+    ["/calendar/", (vnode) => m(Calendar)],
+    ["/kanban/", (vnode) => m(Kanban)],
+];
 
 export const links = [
     {url: "/kanban/", name: "Kanban"},
-    {url: "/calendar/", name: "Calendar"}];
+    {url: "/calendar/", name: "Calendar"},
+];
+
 
 export const searches = [
-    {name: "Cards", query: "category_i:card"},
-    {name: "Operators", query: "category_i:operator"},
-    {name: "Milestones", query: "category_i:milestone"},
-    {name: "Projects", query: "category_i:project"},
+    {name: "Cards", query: "category_s:card"},
+    {name: "Operators", query: "category_s:operator"},
+    {name: "Milestones", query: "category_s:milestone"},
+    {name: "Projects", query: "category_s:project"},
 ]
+
 
 export const categories = {
     card: {

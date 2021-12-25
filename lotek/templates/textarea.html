@@ -1,0 +1,15 @@
+@require(TITLE, CONTENT, access_token, X_WOPI_ItemVersion)
+<!doctype html>
+<html>
+<head>
+<title>@TITLE!e</title>
+</head>
+<body>
+<form method="POST">
+<textarea name="content">@CONTENT!e</textarea>
+<input type="hidden" name="access_token" value="@access_token!a" />
+<input type="hidden" name="X-WOPI-ItemVersion" value="@X_WOPI_ItemVersion!a" />
+<input type="submit" value="Save" />
+</form>
+</body>
+</html>

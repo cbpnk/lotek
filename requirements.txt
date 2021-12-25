@@ -7,4 +7,6 @@ pyuwsgi
 pdfminer.six
 pymdown-extensions
 Pygments
-pyjwt
+odfdo
+ruamel.yaml
+olefile
