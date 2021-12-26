@@ -290,10 +290,11 @@ def get_row(hit, repo, commit, prefix, AUTH_DOMAIN):
 class SearchHandler(BaseHandler):
 
     def get(self):
-        AUTH_DOMAIN = self.options['AUTH_DOMAIN']
-        repo = self.options['repo']
-        index = self.options['index']
-        prefix = self.prefix
+        options = self.options
+        AUTH_DOMAIN = options['AUTH_DOMAIN']
+        repo = options['repo']
+        index = options['index']
+        prefix = options['BASE_URL']
         qs = parse_qs(self.request.environ["QUERY_STRING"])
 
         from whoosh.query import And, Or, Term, DateRange
@@ -388,7 +389,7 @@ class AnnotationCreateHandler(BaseHandler):
         request = self.request
         options = self.options
         AUTH_DOMAIN = options['AUTH_DOMAIN']
-        prefix = self.prefix
+        prefix = options['BASE_URL']
         payload = json.loads(request.stream.read(request.content_length))
         clean_annotation(payload, prefix)
         props = payload.copy()
@@ -415,12 +416,29 @@ class AnnotationCreateHandler(BaseHandler):
 
 class AnnotationHandler(BaseHandler):
 
+    def get(self):
+        options = self.options
+        record_id = self.route_args["id"]
+        prefix = options['BASE_URL']
+        AUTH_DOMAIN = options['AUTH_DOMAIN']
+
+        repo = options['repo']
+        commit = repo.get_latest_commit()
+        info = repo.get_record_info(commit, record_id)
+        if info is None or info.props["type"] != "annotation":
+            return not_found()
+
+        payload = info.props.copy()
+        normalize_annotation(payload, record_id, prefix, AUTH_DOMAIN)
+        return self.json_response(payload)
+
+
     def put(self):
         request = self.request
         options = self.options
         AUTH_DOMAIN = options['AUTH_DOMAIN']
         record_id = self.route_args["id"]
-        prefix = self.prefix
+        prefix = options['BASE_URL']
         payload = json.loads(request.stream.read(request.content_length))
         clean_annotation(payload, prefix)
         props = payload.copy()

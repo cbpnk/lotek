@@ -1,4 +1,4 @@
-@require(TITLE, PDF_URL, PROXY_PDF_URL, PDF_HTTP_HEADERS, access_token, hypothesis_url)
+@require(TITLE, PDF_URL, PROXY_PDF_URL, PDF_HTTP_HEADERS, hypothesis_url)
 <!doctype html>
 <!--
     Copyright 2012 Mozilla Foundation
@@ -37,15 +37,12 @@
 <script>
 var hypothesisConfig = function() {
     return {
-        services: [{
-            apiUrl: "@{hypothesis_url}hypothesis/api/",
-            grantToken: @access_token!json!e,
-            sentry: {"enabled": false},
-            assetRoot: "@{hypothesis_url}static/vendor/npm/hypothesis@@1.954.0/",
-        }]
+        requestConfigFromFrame: {
+            origin: new URL("@{hypothesis_url}").origin,
+            ancestorLevel: 2,
+        }
     };
 };
-
 
 var PDF_URL = @PDF_URL!json!e;
 var PROXY_PDF_URL = @PROXY_PDF_URL!json!e;
@@ -70,7 +67,6 @@ function on_webviewer_loaded(callback) {
 
 on_webviewer_loaded(
     function (event) {
-        console.log(event);
         window.PDFViewerApplicationOptions.set('workerSrc', '/static/vendor/gh/hypothesis/pdf.js-hypothes.is@@f2909ed/viewer/build/pdf.worker.js');
         window.PDFViewerApplicationOptions.set('cMapUrl', '/static/vendor/gh/hypothesis/pdf.js-hypothes.is@@f2909ed/viewer/web/cmaps/');
         window.PDFViewerApplicationOptions.set('imageResourcesPath', '/static/vendor/gh/hypothesis/pdf.js-hypothes.is@@f2909ed/viewer/web/images/');

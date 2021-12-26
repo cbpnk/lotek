@@ -290,12 +290,11 @@ class FileHandler(WOPIBaseHandler):
         base_url = actions.get(action, actions.get('edit', None))
 
         access_token = ticket.encode(token.dump())
-        return self.render_response(
-            'wopi.html',
-            WOPI_CLIENT_URL = base_url + urlencode({"WOPISrc": f"{BASE_URL}{record_id}"}),
-            ACCESS_TOKEN = access_token,
-            ACCESS_TOKEN_TTL = str(get_token_ttl(ticket, access_token)*1000),
-            PARAMS = client.get("params", []))
+        return self.json_response(
+            {'client_url': base_url + urlencode({"WOPISrc": f"{BASE_URL}{record_id}"}),
+             'access_token': access_token,
+             'access_token_ttl': str(get_token_ttl(ticket, access_token)*1000),
+             'params': client.get("params", [])})
 
 
 

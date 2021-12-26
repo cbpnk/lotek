@@ -40,8 +40,7 @@ class Handler(WOPIBaseHandler):
             TITLE = title,
             WOPISrc = self.src,
             indexfilename = f"/clients/maff/{access_token}/{file_id}!/{name}/{indexfilename}",
-            access_token = self.access_token,
-            hypothesis_url = urljoin(src, "/")
+            hypothesis_url = urljoin(info['PostMessageOrigin'], "/")
         )
 
 def handle_maff_request(request):

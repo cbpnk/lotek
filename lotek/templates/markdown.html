@@ -1,4 +1,4 @@
-@require(TITLE, HTML, WOPISrc, access_token, hypothesis_url)
+@require(TITLE, HTML, WOPISrc, hypothesis_url)
 <!doctype html>
 <html>
 <head>
@@ -46,12 +46,10 @@ formatter = HtmlFormatter(linenos=True)
 <script>
 var hypothesisConfig = function() {
     return {
-        services: [{
-            apiUrl: "@{hypothesis_url}hypothesis/api/",
-            grantToken: @access_token!json!e,
-            sentry: {"enabled": false},
-            assetRoot: "@{hypothesis_url}static/vendor/npm/hypothesis@@1.954.0/",
-        }],
+        requestConfigFromFrame: {
+            origin: new URL("@{hypothesis_url}").origin,
+            ancestorLevel: 2,
+        }
     };
 };
 

@@ -19,6 +19,5 @@ class Handler(WOPIBaseHandler):
                 'X-WOPI-PROOF': signature,
                 'X-WOPI-PROOFOLD': signature,
             },
-            access_token = self.access_token,
-            hypothesis_url = urljoin(self.src, "/")
+            hypothesis_url = urljoin(info['PostMessageOrigin'], "/")
         )

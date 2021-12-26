@@ -47,6 +47,5 @@ class Handler(WOPIBaseHandler):
             TITLE = info["BaseFileName"] + info['FileExtension'],
             HTML = md.convert(content.decode()),
             WOPISrc = self.src,
-            access_token = self.access_token,
-            hypothesis_url = urljoin(self.src, "/")
+            hypothesis_url = urljoin(info['PostMessageOrigin'], "/")
         )

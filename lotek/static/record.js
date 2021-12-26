@@ -74,7 +74,7 @@ const Record = {
                  m(registry.types[record.type],
                    {id: vnode.attrs.id,
                     record: vnode.state.record,
-                    allow: vnode.state.allow,
+                    allow: vnode.state.allow || [],
                     patch})
                 );
     }
