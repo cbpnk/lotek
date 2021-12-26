@@ -88,27 +88,40 @@ on_webviewer_loaded(
         // Wait for the PDF viewer to be fully initialized and then load the Hypothesis client.
         const app = PDFViewerApplication;
         app.initializedPromise.then(() => {
-	    // Load the Hypothesis client.
-	    const embedScript = document.createElement('script');
-	    embedScript.src = clientEmbedUrl;
-	    document.body.appendChild(embedScript);
+            window.parent.postMessage(
+                {jsonrpc: '2.0',
+                 method: 'requestInitialBookmark'},
+                new URL(clientEmbedUrl).origin
+            );
 
-	    // Load the PDF specified in the URL.
-	    //
-	    // This is done after the viewer components are initialized to avoid some
-	    // race conditions in `PDFViewerApplication` if the PDF finishes loading
-	    // (eg. from the HTTP cache) before the viewer is fully initialized.
-	    //
-	    // See https://github.com/mozilla/pdf.js/wiki/Frequently-Asked-Questions#can-i-specify-a-different-pdf-in-the-default-viewer
-	    // and https://github.com/mozilla/pdf.js/issues/10435#issuecomment-452706770
-	    app.open({
-	        // Load PDF through Via to work around CORS restrictions.
-	        url: proxyPdfUrl,
+            function listener(event) {
+                app.initialBookmark = event.data.result;
+                window.removeEventListener('message', listener);
 
-	        // Make sure `PDFViewerApplication.url` returns the original URL, as this
-	        // is the URL associated with annotations.
-	        originalUrl: pdfUrl,
-	    },{httpHeaders});
+	        // Load the Hypothesis client.
+	        const embedScript = document.createElement('script');
+	        embedScript.src = clientEmbedUrl;
+	        document.body.appendChild(embedScript);
+
+	        // Load the PDF specified in the URL.
+	        //
+	        // This is done after the viewer components are initialized to avoid some
+	        // race conditions in `PDFViewerApplication` if the PDF finishes loading
+	        // (eg. from the HTTP cache) before the viewer is fully initialized.
+	        //
+	        // See https://github.com/mozilla/pdf.js/wiki/Frequently-Asked-Questions#can-i-specify-a-different-pdf-in-the-default-viewer
+	        // and https://github.com/mozilla/pdf.js/issues/10435#issuecomment-452706770
+	        app.open({
+	            // Load PDF through Via to work around CORS restrictions.
+	            url: proxyPdfUrl,
+
+	            // Make sure `PDFViewerApplication.url` returns the original URL, as this
+	            // is the URL associated with annotations.
+	            originalUrl: pdfUrl,
+	        },{httpHeaders});
+            }
+
+            window.addEventListener('message', listener);
         });
     }
 );

@@ -34,34 +34,48 @@ const View = {
 
         if (!vnode.state.listener) {
             vnode.state.listener = function(event) {
-                if (event.source !== vnode.dom.contentWindow[0])
-                    return;
                 if (event.data.jsonrpc !== '2.0')
                     return;
-                if (event.data.method !== "requestConfig")
-                    return;
 
-                const result = {
-                    services: [
-                        {apiUrl: `${window.location.origin}/hypothesis/api/`,
-                         grantToken: data.access_token,
-                         sentry: {enabled: false}}
-                    ]
-                };
-                const annotFragmentMatch = window.location.hash.match(
-                    /^#annotations:([A-Za-z0-9_-]+)$/
-                );
-                if (annotFragmentMatch) {
-                    result.annotations = annotFragmentMatch[1];
+                switch(event.data.method) {
+                case "requestConfig":
+                    if (event.source !== vnode.dom.contentWindow[0])
+                        return;
+                    const result = {
+                        services: [
+                            {apiUrl: `${window.location.origin}/hypothesis/api/`,
+                             grantToken: data.access_token,
+                             sentry: {enabled: false}}
+                        ]
+                    };
+                    const annotFragmentMatch = window.location.hash.match(
+                        /^#annotations:([A-Za-z0-9_-]+)$/
+                    );
+                    if (annotFragmentMatch) {
+                        result.annotations = annotFragmentMatch[1];
+                    }
+
+                    event.source.postMessage(
+                        {jsonrpc: '2.0',
+                         id: event.data.id,
+                         result
+                        },
+                        event.origin
+                    );
+                    return;
+                case "requestInitialBookmark":
+                    if (event.source !== vnode.dom.contentWindow)
+                        return;
+                    event.source.postMessage(
+                        {jsonrpc: '2.0',
+                         result: window.location.hash.substring(1)
+                        },
+                        event.origin
+                    );
+                    return;
                 }
 
-                event.source.postMessage(
-                    {jsonrpc: '2.0',
-                     id: event.data.id,
-                     result
-                    },
-                    event.origin
-                );
+
             }
             window.addEventListener(
                 'message',
