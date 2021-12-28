@@ -494,7 +494,8 @@ const Milestone = {
 };
 
 export const modes = [
-    {label: "Milestone",
+    {name: "milestone",
+     label: "Milestone",
      is_available: is_milestone_available,
      component: Milestone}
 ];

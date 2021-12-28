@@ -89,13 +89,22 @@ on_webviewer_loaded(
         const app = PDFViewerApplication;
         app.initializedPromise.then(() => {
             window.parent.postMessage(
-                {jsonrpc: '2.0',
-                 method: 'requestInitialBookmark'},
+                JSON.stringify(
+                    {MessageId: "Get_InitialBookmark",
+                     SendTime: new Date().valueOf()}),
                 new URL(clientEmbedUrl).origin
             );
 
             function listener(event) {
-                app.initialBookmark = event.data.result;
+                if (event.source !== window.parent)
+                    return;
+
+                const data = JSON.parse(event.data);
+
+                if (data.MessageId !== 'Get_InitialBookmark_Resp')
+                    return;
+
+                app.initialBookmark = data.Values.bookmark;
                 window.removeEventListener('message', listener);
 
 	        // Load the Hypothesis client.

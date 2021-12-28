@@ -1,6 +1,7 @@
 from io import BytesIO
 from urllib.request import urlopen, Request
 from urllib.parse import urlencode, urlparse, urljoin
+from urllib.error import HTTPError
 from base64 import b64encode
 import xml.etree.ElementTree as ET
 from time import time
@@ -128,10 +129,13 @@ class WOPIBaseHandler(BaseHandler):
 
             for k, v in headers.items():
                 environ["HTTP_"+k.upper().replace("-", "_")] = v
-            assert c.run(environ) == 200
+            status = c.run(environ)
             response = BytesIO(b"".join(c.response))
-            response.headers = {k: v[0] for k, v in c.headers.items() if v}
-            return response
+            if status == 200:
+                response.headers = {k: v[0] for k, v in c.headers.items() if v}
+                return response
+            else:
+                raise HTTPError(url, status, "", c.headers, response)
         else:
             return urlopen(Request(url, data, headers, method=method))
 

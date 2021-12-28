@@ -24,14 +24,26 @@ const File = {
             document.title = `${record.name || vnode.attrs.id }`;
         }
 
-        vnode.state.index = 0;
         vnode.state.edit_title = null;
+        vnode.state.events = new EventTarget();
     },
 
     view(vnode) {
         const patch = vnode.attrs.patch;
         const modes = registry.modes.filter((mode) => mode.is_available(vnode.attrs.record, vnode.attrs.allow));
         const actions = registry.actions.filter((action) => action.is_available(vnode.attrs.record, vnode.attrs.allow));
+
+        const active = m.route.param("mode") || modes[0].name;
+        const active_mode = modes.find((mode) => mode.name === active);
+
+        if (active !== vnode.state.last_active)
+            vnode.state.enabled = {};
+
+        vnode.state.last_active = active;
+
+        function set_button_enabled(name, enabled) {
+            vnode.state.enabled[name] = enabled;
+        }
 
         return [
             m(".container", {style: "position: relative;"},
@@ -57,7 +69,7 @@ const File = {
                       m(CUI.Input,
                         {fluid: true,
                          value: vnode.state.edit_title,
-                         onchange(e) { vnode.state.edit_title = e.target.value; }}
+                         oninput(e) { vnode.state.edit_title = e.target.value; }}
                        ),
                       m(CUI.Button,
                         {intent: "primary",
@@ -89,23 +101,44 @@ const File = {
                      ),
                     (modes.length > 0)?
                     m(CUI.ControlGroup,
-                      {style: "flex-grow: 1; justify-content: flex-end;"},
+                      (active_mode.buttons || []).map(
+                          (button) =>
+                          m(CUI.Button,
+                            {style: "sm",
+                             label: button.label,
+                             disabled: !vnode.state.enabled[button.name],
+                             size: "sm",
+                             onclick() {
+                                 vnode.state.events.dispatchEvent(new CustomEvent(button.name));
+                             }
+                            }
+                           )
+                      )
+                     )
+                    :null,
+                    (modes.length > 0)?
+                    m(CUI.ControlGroup,
+                      {style: "justify-content: flex-end;"},
                       m(CUI.PopoverMenu,
                         {trigger:
                          m(CUI.Button,
                            {style: "sm",
                             active: true,
-                            label: modes[vnode.state.index].label,
+                            label: active_mode.label,
                             size: "sm",
                             iconRight: CUI.Icons.CHEVRON_DOWN}
                           ),
                          content: [
                              modes.map(
                                  (mode, i) =>
-                                 (i !== vnode.state.index)?
+                                 (mode.name !== active)?
                                      m(CUI.MenuItem,
                                        {label: mode.label,
-                                        onclick() { vnode.state.index = i; }
+                                        onclick() {
+                                            m.route.set(
+                                                m.buildPathname("/:id", {id: vnode.attrs.id}),
+                                                {mode: mode.name});
+                                        }
                                        }
                                       )
                                      :null
@@ -127,10 +160,12 @@ const File = {
                    ),
                   m(".container", {style: "position: relative;"},
                     (modes.length > 0)?
-                    m(modes[vnode.state.index].component,
-                      {key: vnode.state.index,
+                    m(active_mode.component,
+                      {key: active,
                        id: vnode.attrs.id,
-                       file: vnode.attrs.record}):null
+                       file: vnode.attrs.record,
+                       events: vnode.state.events,
+                       set_button_enabled}):null
                    )
                  )
                )

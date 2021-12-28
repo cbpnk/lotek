@@ -46,24 +46,33 @@ def lazy_base_url(mod):
     port = uwsgi.opt['http-socket'].split(b":", 1)[1].decode()
     return f'http://{hostname}:{port}/'
 
+
+def collaboraonline_url():
+    return (os.environ["COLLABORAONLINE"] or "http://127.0.0.1:9980/") + "hosting/discovery"
+
 def lazy_wopi_clients(mod):
-    return {
-        __package__: {
-            "url": f"{mod.BASE_URL}clients/"
+    d = {__package__: {"url": f"{mod.BASE_URL}clients/"}}
+    if "COLLABORAONLINE" in os.environ:
+        d["collaboraonline"] = {
+            'url': collaboraonline_url(),
+            'params': [
+                ['ui_defaults', 'UIMode=classic']
+            ]
         }
-    }
-    #         "collaboraonline": {
-    #             'url': 'http://127.0.0.1:9980/hosting/discovery',
-    #             'params': [
-    #                 ('ui_defaults', 'UIMode=classic')
-    #             ]
-    #         }
-    #     }
+    return d
 
 def lazy_host_formats(mod):
+    d = {}
     if mod.WOPI_CLIENTS.get(__package__, {}).get("url", "") == f"{mod.BASE_URL}clients/":
-        return {key: __package__ for key in mod.CLIENT_FORMATS}
-    return {}
+        for key in mod.CLIENT_FORMATS:
+            d[key] = __package__
+    if "COLLABORAONLINE" in os.environ:
+        if mod.WOPI_CLIENTS.get("collaboraonline", {}).get("url", "") == collaboraonline_url():
+            for key in ("odt",):
+                if key in d:
+                    continue
+                d[key] = "collaboraonline"
+    return d
 
 def lazy_index(mod):
     from .index import Index
@@ -116,7 +125,7 @@ def load_config(filename):
     d['INDEX_ROOT'] = 'index'
 
     d["CLIENT_FORMATS"] = {
-        'md': {'view': 'markdown', 'edit': 'textarea'},
+        'md': {'view': 'markdown', 'edit': 'prosemirror-markdown'},
         'pdf': {'view': 'pdf'},
         'maff': {'view': 'maff'},
     }
@@ -138,7 +147,6 @@ def load_config(filename):
     }
     FORMATS.update(d.get('FORMATS', {}))
     d['FORMATS'] = FORMATS
-
 
     mod.__getattr__ = lazy_getattr(mod, config_attrs)
     return mod

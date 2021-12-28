@@ -1,0 +1,245 @@
+@require(TITLE, CONTENT, access_token, X_WOPI_ItemVersion, ORIGIN)
+<!doctype html>
+<html>
+<head>
+<title>@TITLE!e</title>
+<link rel="stylesheet" href="/static/vendor/npm/prosemirror-view@@1.23.4/style/prosemirror.css">
+<link rel="stylesheet" href="/static/vendor/npm/prosemirror-example-setup@@1.1.2/style/style.css">
+<link rel="stylesheet" href="/static/vendor/npm/prosemirror-gapcursor@@1.2.1/style/gapcursor.css">
+<link rel="stylesheet" href="/static/vendor/npm/prosemirror-menu@@1.1.4/style/menu.css">
+<script>
+async function load_commonjs_module(key, value) {
+    const response = await fetch(`/static/vendor/npm/${key}@@${value}`);
+    const text = await response.text();
+    return text;
+}
+
+async function load_commonjs_modules(modules) {
+    const keys = Object.keys(modules);
+    const values = await Promise.all(
+        keys.map((key) => load_commonjs_module(key, modules[key]))
+    );
+    return Object.fromEntries(keys.map((key, i) => [key, values[i]]));
+}
+
+async function bundle_commonjs_modules(modules, main) {
+    const mods = await load_commonjs_modules(modules);
+    mods[""] = main;
+    const text = `
+(function(modules){
+const initialized = {};
+function require(name) {
+  if (initialized[name]) return initialized[name].exports;
+  const module = {
+    moduleName: name,
+    exports: {}
+  };
+
+  initialized[name] = module;
+  modules[name].call(module.exports, module, module.exports, require);
+  return module.exports;
+};
+  return require("");
+})({
+` + Object.entries(mods).map(
+        ([key, value]) => `${JSON.stringify(key)}: function(module,exports,require){${value}}`
+    ).join(",") + "});";
+    return text;
+}
+
+window.addEventListener(
+    'load',
+    function() {
+        bundle_commonjs_modules(
+            {"orderedmap": "1.1.1/index.js",
+             "markdown-it": "12.3.0/dist/markdown-it.js",
+             "w3c-keyname": "2.2.4/index.cjs",
+             "rope-sequence": "1.3.2/dist/index.js",
+             "crelt": "1.0.5/dist/index.cjs",
+             "prosemirror-model": "1.15.0/dist/index.js",
+             "prosemirror-transform": "1.3.3/dist/index.js",
+             "prosemirror-state": "1.3.4/dist/index.js",
+             "prosemirror-view": "1.23.4/dist/index.js",
+             "prosemirror-markdown": "1.6.1/dist/index.js",
+             "prosemirror-keymap": "1.1.5/dist/index.js",
+             "prosemirror-history": "1.2.0/dist/index.js",
+             "prosemirror-commands": "1.1.12/dist/index.js",
+             "prosemirror-dropcursor": "1.4.0/dist/index.js",
+             "prosemirror-gapcursor": "1.2.1/dist/index.js",
+             "prosemirror-menu": "1.1.4/dist/index.js",
+             "prosemirror-schema-list": "1.1.6/dist/index.js",
+             "prosemirror-inputrules": "1.1.3/dist/index.js",
+             "prosemirror-example-setup": "1.1.2/dist/index.js",
+            },
+            document.getElementById("main").text
+        ).then(
+            function(text) {
+	        const embedScript = document.createElement('script');
+                embedScript.appendChild(document.createTextNode(text));
+	        document.body.appendChild(embedScript);
+            }
+        );
+    }
+);
+
+</script>
+<script id="main" type="text/plain">
+const {EditorView} = require("prosemirror-view");
+const {EditorState, Plugin} = require("prosemirror-state");
+const {schema, defaultMarkdownParser, defaultMarkdownSerializer} = require("prosemirror-markdown");
+const {exampleSetup} = require("prosemirror-example-setup");
+
+const origin = @ORIGIN!json!e;
+const access_token = @access_token!json!e;
+let initial_content = @CONTENT!json!e;
+let item_version = @X_WOPI_ItemVersion!json!e;
+let modified = false;
+let host_ready = false;
+let view = null;
+
+function send_modified_status() {
+    window.parent.postMessage(
+        JSON.stringify(
+            {MessageId: "Doc_ModifiedStatus",
+             SendTime: new Date().valueOf(),
+             Values: {
+                 Modified: modified
+             }
+            }
+        ),
+        origin);
+}
+
+const plugins = exampleSetup({schema});
+plugins.push(new Plugin(
+    {
+        view(editor_view) {
+            return {
+                update(view, prevState) {
+                    const new_modified = (defaultMarkdownSerializer.serialize(view.state.doc) !== initial_content);
+
+                    if (new_modified === modified)
+                        return;
+                    modified = new_modified;
+                    send_modified_status();
+                }
+            };
+        }
+    }
+));
+
+
+function create_view(content) {
+    if (view)
+        view.destroy();
+
+    view = new EditorView(
+        document.body,
+        {state: EditorState.create(
+            {doc: defaultMarkdownParser.parse(initial_content),
+             plugins
+            })
+        }
+    );
+}
+
+function on_loadend(event) {
+    const data = event.target.response;
+    if (event.target.status === 200) {
+        initial_content = data.content;
+        return;
+    }
+
+    if (event.target.status !== 412) {
+        modified = true;
+        send_modified_status();
+        return;
+    }
+
+    initial_content = data.content;
+    item_version = data["X-WOPI-ItemVersion"]
+    create_view();
+}
+
+window.addEventListener(
+    'message',
+    function(event) {
+        if (event.source !== window.parent)
+            return;
+        if (event.origin !== origin)
+            return;
+        const data = JSON.parse(event.data);
+        if (!host_ready) {
+            if (data.MessageId === 'Host_PostmessageReady')
+                host_ready = true;
+            return;
+        }
+
+        switch(data.MessageId) {
+        case "Action_Save":
+            modified = false;
+            const new_content = defaultMarkdownSerializer.serialize(view.state.doc);
+            if (new_content === initial_content)
+                return;
+
+            send_modified_status();
+
+            const form = new FormData();
+            form.append("content", new_content);
+            form.append("access_token", access_token);
+            form.append("X-WOPI-ItemVersion", item_version);
+
+            const req = new XMLHttpRequest();
+            req.open("POST", window.location.href);
+            req.setRequestHeader('Accept', 'application/json');
+            req.responseType = 'json';
+            req.send(form);
+            req.addEventListener('loadend', on_loadend);
+            break;
+        }
+    }
+);
+
+window.parent.postMessage(
+    JSON.stringify(
+        {MessageId: "App_LoadingStatus",
+         SendTime: new Date().valueOf(),
+         Values: {
+             Status: "Frame_Ready"
+         }
+        }
+    ),
+    origin
+);
+
+create_view();
+
+window.parent.postMessage(
+    JSON.stringify(
+        {MessageId: "App_LoadingStatus",
+         SendTime: new Date().valueOf(),
+         Values: {
+             Status: "Document_Loaded",
+             DocumentLoadedTime: new Date().valueOf(),
+         }
+        }
+    ),
+    origin
+);
+
+window.parent.postMessage(
+    JSON.stringify(
+        {MessageId: "Doc_ModifiedStatus",
+         SendTime: new Date().valueOf(),
+         Values: {
+             Modified: false
+         }
+        }
+    ),
+    origin
+);
+</script>
+</head>
+<body>
+</body>
+</html>

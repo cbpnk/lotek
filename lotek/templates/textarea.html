@@ -1,15 +1,114 @@
-@require(TITLE, CONTENT, access_token, X_WOPI_ItemVersion)
+@require(TITLE, CONTENT, access_token, X_WOPI_ItemVersion, ORIGIN)
 <!doctype html>
 <html>
 <head>
 <title>@TITLE!e</title>
+<script>
+const origin = @ORIGIN!json!e;
+let modified = false;
+let host_ready = false;
+
+window.addEventListener(
+    'load',
+    function() {
+        window.parent.postMessage(
+            JSON.stringify(
+                {MessageId: "App_LoadingStatus",
+                 SendTime: new Date().valueOf(),
+                 Values: {
+                     Status: "Frame_Ready"
+                 }
+                }
+            ),
+            origin
+        );
+
+        window.parent.postMessage(
+            JSON.stringify(
+                {MessageId: "App_LoadingStatus",
+                 SendTime: new Date().valueOf(),
+                 Values: {
+                     Status: "Document_Loaded",
+                     DocumentLoadedTime: new Date().valueOf(),
+                 }
+                }
+            ),
+            origin
+        );
+
+        window.parent.postMessage(
+            JSON.stringify(
+                {MessageId: "Doc_ModifiedStatus",
+                 SendTime: new Date().valueOf(),
+                 Values: {
+                     Modified: false
+                 }
+                }
+            ),
+            origin
+        );
+
+        const textarea = document.querySelector('textarea');
+        const initial_content = textarea.value;
+
+        function on_input(event) {
+            const new_modified = textarea.value !== initial_content;
+            if (new_modified === modified)
+                return;
+            modified = new_modified;
+
+            window.parent.postMessage(
+                JSON.stringify(
+                    {MessageId: "Doc_ModifiedStatus",
+                     SendTime: new Date().valueOf(),
+                     Values: {
+                         Modified: modified
+                     }
+                    }
+                ),
+                origin);
+        }
+        textarea.addEventListener('input', on_input);
+    }
+);
+
+window.addEventListener(
+    'message',
+    function(event) {
+        if (event.source !== window.parent)
+            return;
+        if (event.origin !== origin)
+            return;
+        const data = JSON.parse(event.data);
+        if (!host_ready) {
+            if (data.MessageId === 'Host_PostmessageReady')
+                host_ready = true;
+            return;
+        }
+
+        switch(data.MessageId) {
+        case "Action_Save":
+            document.forms[0].submit();
+            break;
+        }
+    }
+);
+
+</script>
+<style type="text/css">
+html, body, form {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+}
+</style>
 </head>
 <body>
 <form method="POST">
 <textarea name="content">@CONTENT!e</textarea>
 <input type="hidden" name="access_token" value="@access_token!a" />
 <input type="hidden" name="X-WOPI-ItemVersion" value="@X_WOPI_ItemVersion!a" />
-<input type="submit" value="Save" />
 </form>
 </body>
 </html>

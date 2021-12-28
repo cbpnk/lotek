@@ -78,7 +78,8 @@ function is_debug_available(file, allow) {
 }
 
 export const modes = [
-    {label: "Debug",
+    {name: "debug",
+     label: "Debug",
      is_available: is_debug_available,
      component: Debug}
 ];

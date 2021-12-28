@@ -9,8 +9,18 @@ class Handler(WOPIBaseHandler):
         info = self.get_info()
         response = self.get_content()
         version = response.headers['X-WOPI-ItemVersion']
+
+        accept_header = self.request.environ.get('HTTP_ACCEPT', 'text/html')
+        for mime_type in accept_header.split(","):
+            if mime_type == 'application/json':
+                return self.json_response(
+                    {"content": response.read().decode(),
+                     "X-WOPI-ItemVersion": version})
+            elif mime_type in ('text/html', '*/*'):
+                break
+
         return self.render_response(
-            'textarea.html',
+            'prosemirror-markdown.html',
             TITLE = info["BaseFileName"] + info['FileExtension'],
             CONTENT = response.read().decode(),
             X_WOPI_ItemVersion = version,
@@ -18,11 +28,16 @@ class Handler(WOPIBaseHandler):
             ORIGIN = info['PostMessageOrigin'])
 
     def handle_form(self):
+        form = self.request.form
         content = form.get('content', [None])[0]
         version = form.get('X-WOPI-ItemVersion', [None])[0]
         try:
             self.put_content(version, content.encode())
+            status = 200
         except HTTPError as e:
             if e.status != 412:
                 raise
-        return self.render_html()
+            status = 412
+        response = self.render_html()
+        response.status_code = status
+        return response

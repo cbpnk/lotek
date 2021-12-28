@@ -56,7 +56,8 @@ const View = {
 };
 
 export const modes = [
-    {label: "Meta",
+    {name: "meta",
+     label: "Meta",
      is_available: is_view_available,
      component: View}
 ];

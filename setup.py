@@ -18,8 +18,8 @@ setup(
 
     packages = find_packages(),
     package_data = {
-      'lotek.host': ['templates/*.html', 'static/*.html', 'static/*.js', 'static/*.css'],
-      'lotek.client': ['templates/*.html', 'static/*.html', 'static/*.js', 'static/*.css']
+        'lotek.host': ['templates/*.html', 'static/*.html', 'static/*.js', 'static/*.css'],
+        'lotek.client': ['templates/*.html', 'static/*.html', 'static/*.js', 'static/*.css']
     },
     entry_points={
         'lotek_repos':
@@ -35,8 +35,9 @@ setup(
         'whoosh'
     ],
     extras_requires = {
-      'odf': ['odfdo'],
-      'pdf': ['pdfminer.six'],
-      'markdown': ['markdown', 'pymdown-extensions', 'Pygments']
+        'ole': ['olefile'],
+        'odf': ['odfdo'],
+        'pdf': ['pdfminer.six'],
+        'markdown': ['commonmark'],
     }
 )
