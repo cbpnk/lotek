@@ -1,5 +1,3 @@
-import {levenshteinEditDistance} from "/static/vendor/npm/levenshtein-edit-distance@3.0.0/index.js";
-
 function debounce(func, wait) {
     let timer = null;
     return function(...args) {
@@ -132,16 +130,8 @@ export const AutoCompleteInput = {
         }
 
         function filter_items(query, items) {
-            let items1 = items.map(
-                (item) =>
-                [levenshteinEditDistance(
-                    (item.name || ""),
-                    query),
-                 item]
-            );
-            items1.sort((a,b) => a[0] - b[0]);
-            items1.slice(9);
-            return items1.map(([_, item]) => item);
+            const fuse = new Fuse(items.map((item) => item.name));
+            return fuse.search(query).map((item) => items[item.refIndex]);
         }
 
         function add_id(id) {
