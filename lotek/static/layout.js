@@ -183,7 +183,7 @@ const User = {
                           {basic: true,
                            size: "xs",
                            label:
-                           [user_id,
+                           [USER.display_name,
                             m(CUI.Icon, {name: CUI.Icons.CHEVRON_DOWN})]}),
                content: [
                    m(CUI.MenuItem,

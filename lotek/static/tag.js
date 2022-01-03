@@ -19,12 +19,16 @@ const Widget = {
 const TagForm = {
     view: function(vnode) {
         return m(m.route.Link,
-                 {href: m.buildPathname("/search/", {q: `tag_r:${vnode.attrs.path}`})},
+                 {href: m.buildPathname("/search/", {q: `tag_r:${vnode.attrs.id}`})},
                  "tagged with ", vnode.attrs.file.name || "Untitled");
     }
 };
 
-export const searches = [{name: "Tags", query: "category_s:tag"}];
+export const searches = [
+    {name: "Tags", query: "category_s:tag"},
+    {name: "Untagged", query: "(type:file) AND (NOT category_s:tag) AND (NOT tag_r:*)"}
+];
+
 export const categories = {
     tag: {
         name: "Tag",

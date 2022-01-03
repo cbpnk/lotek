@@ -53,6 +53,14 @@ def import_file(repo, formats, source_filename, source=None, mode=None, author=N
     else:
         cm = nullcontext()
 
+    if "meta" not in props and file_format:
+        meta = file_format.extract_metadata(source)
+        props["meta"] = meta
+        title = meta.get("title_t", None)
+        if title:
+            props["name"] = title
+        source.seek(0)
+
     with cm:
         record_id, size, content = repo.import_media_file(ext, source, mode)
         props["size"] = size
@@ -63,14 +71,9 @@ def import_file(repo, formats, source_filename, source=None, mode=None, author=N
                 return record_id, False
 
             message = f"Import .{ext} file" if ext else f"Import file"
-
-            if "meta" not in props and file_format:
-                meta = file_format.extract_metadata(source)
-                props["meta"] = meta
-                title = meta.get("title_t", None)
-                if title:
-                    props["name"] = title
-                    message += f" {title}"
+            title = props["meta"].get("title_t", None)
+            if title:
+                message += f" {title}"
 
             if repo.put_record(commit, record_id, props, content, message, author, date):
                 return record_id, True
