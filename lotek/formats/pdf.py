@@ -33,13 +33,16 @@ def decode(s):
 
 
 def parse_date(s):
+    s = s.strip()
     if len(s) == 16:
-        s += '+0000'
-    if s.endswith('Z'):
-        s = s[:-1] + '+0000'
+        s += "+0000"
+    if s.endswith("Z'"):
+        s = s[:-2] + "+0000"
+    elif s.endswith("Z"):
+        s = s[:-1] + "+0000"
     elif s.endswith("'"):
         s += "00"
-    s = s.replace('Z', '+')
+    s = s.replace("Z", "+")
     return datetime.strptime(s.replace("'", ""), "D:%Y%m%d%H%M%S%z")
 
 
@@ -121,4 +124,5 @@ def extract_content(f):
         if isatty:
             progress_bar(pagenum, pages, columns)
 
-        yield f"page={pagenum}", "page", text
+        if text:
+            yield f"page={pagenum}", "page", text

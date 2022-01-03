@@ -9,6 +9,7 @@ from whoosh.qparser import MultifieldParser, plugins
 from whoosh.index import open_dir, create_in, EmptyIndexError, LockError
 from whoosh.analysis import unstopped
 from whoosh.fields import Schema, ID, NUMERIC, BOOLEAN
+from whoosh.writing import BufferedWriter
 from whoosh import formats
 
 from .fields import NGRAMCJKTEXT, ISO8601
@@ -91,7 +92,7 @@ class Index:
         while True:
             with self.ix.searcher() as searcher:
                 try:
-                    writer = self.ix.writer()
+                    writer = BufferedWriter(self.ix, period=0, limit=2**32)
                 except LockError:
                     return
 

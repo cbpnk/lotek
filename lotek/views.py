@@ -1,4 +1,4 @@
-from urllib.parse import urlencode, quote
+from urllib.parse import urlencode, quote, unquote
 from mimetypes import guess_type
 from datetime import datetime, timezone
 import json
@@ -63,6 +63,7 @@ def search(index, q, highlight):
             if name is not None:
                 d["name"] = name
 
+        d.pop("content", None)
         yield d
 
 
@@ -194,7 +195,7 @@ class FileHandler(WOPIBaseHandler):
         date = self.date
 
         record_id = self.record_id
-        message = request.environ.get('HTTP_SUBJECT', f"Update attrs")
+        message = unquote(request.environ.get('HTTP_SUBJECT', "Update attrs"))
 
         while True:
             commit = repo.get_latest_commit()

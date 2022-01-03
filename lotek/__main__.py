@@ -20,6 +20,7 @@ parser_refresh = subparsers.add_parser('refresh')
 parser_refresh.add_argument('filename')
 
 
+
 if sys.modules['__main__'].__package__ == __package__:
     config_file = os.environ.get(__package__.upper() + '_CONFIG', None)
 else:
@@ -61,7 +62,7 @@ elif args.COMMAND == 'index':
     config.index.update()
 elif args.COMMAND == 'search':
     for hit in config.index.search(args.query):
-        print(hit["path"], hit.fields())
+        print(hit["id"], hit.fields())
 elif args.COMMAND == 'import':
     from .files import import_file
     file_id, new = import_file(config.repo, config.formats, args.filename, mode=args.mode)

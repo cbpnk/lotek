@@ -80,7 +80,7 @@ const File = {
                                      [{op: "replace", path: "/name", value: vnode.state.edit_title}]
                                      :
                                      [{op: "add", path: "/name", value: vnode.state.edit_title}],
-                                 {'Subject': `Rename to ${vnode.state.edit_title}`}
+                                 {'Subject': encodeURIComponent(`Rename to ${vnode.state.edit_title}`)}
                              );
                              vnode.state.edit_title = null;
                          }
