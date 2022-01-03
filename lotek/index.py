@@ -119,20 +119,21 @@ class Index:
 
                                 ext = info.ext
                                 if ext:
-                                    doc["content"] = ""
-                                    writer.delete_by_query(Wildcard("id", f"{info.record_id}#*"))
-                                    with repo.open(info) as f:
-                                        for fragment, type, content in getattr(self.formats, ext).extract_content(f):
-                                            if not fragment:
-                                                doc["content"] = content
-                                                continue
-                                            writer.add_document(
-                                                id=f"{info.record_id}#{fragment}",
-                                                type=type,
-                                                content=content)
+                                    if not info.islink():
+                                        writer.delete_by_query(Wildcard("id", f"{info.record_id}#*"))
+                                        with repo.open(info) as f:
+                                            for fragment, type, content in getattr(self.formats, ext).extract_content(f):
+                                                if not fragment:
+                                                    doc["content"] = content
+                                                    continue
+                                                writer.add_document(
+                                                    id=f"{info.record_id}#{fragment}",
+                                                    type=type,
+                                                    content=content)
                                 else:
                                     doc["content"] = (searcher.document(id=info.record_id) or {}).get("content", "")
 
+                                doc.setdefault("content", "")
                                 writer.update_document(**doc)
                             elif props["type"] == "annotation":
                                 created_date = datetime.fromisoformat(props["created"]).astimezone(timezone.utc)
